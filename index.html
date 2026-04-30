@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Wedding Gallery — Claudine &amp; Mark</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -28,6 +28,7 @@
         @keyframes fadeUp { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes petalDrift { 0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.22; } 50% { transform: translateY(-14px) rotate(8deg); opacity: 0.28; } }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fillBar { from { width: 0%; } to { width: var(--fill-width); } }
 
         .ambient { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
         .ambient svg { position: absolute; }
@@ -95,7 +96,13 @@
         .btn-send-wrapper.visible { display: block; }
         .btn-send { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; padding: 14px 56px; background: var(--bark); color: var(--blush); border: none; cursor: pointer; transition: 0.25s; }
         .btn-send:hover { opacity: 0.72; transform: translateY(-1px); }
-        .upload-progress { margin-top: 12px; font-size: 13px; color: #31231a; }
+
+        /* Upload progress bar */
+        .upload-progress { margin-top: 16px; width: 100%; max-width: 420px; display: none; flex-direction: column; gap: 6px; }
+        .upload-progress.visible { display: flex; }
+        .progress-text { font-size: 13px; font-weight: 300; color: #31231a; }
+        .progress-bar-container { width: 100%; height: 10px; background: rgba(255,183,197,0.25); border-radius: 10px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: var(--petal); border-radius: 10px; transition: width 0.3s ease; }
 
         .gallery-wrapper { width: 100%; margin-top: 60px; animation: fadeUp 0.9s ease 0.3s both; }
         .gallery-box { background: #fffbfb; border: 0.5px solid var(--petal-border); border-radius: 3px; padding: 24px 22px; box-shadow: 0 1px 0 rgba(255,183,197,0.22), 0 8px 32px rgba(255,183,197,0.09); }
@@ -159,7 +166,7 @@
         .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: transparent; border: 0.5px solid rgba(255,183,197,0.3); color: rgba(255,240,241,0.75); font-size: 20px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 50%; transition: 0.2s; }
         .lightbox-nav:hover { background: rgba(255,183,197,0.12); color: var(--petal); border-color: rgba(255,183,197,0.5); }
         .lightbox-prev { left: 24px; } .lightbox-next { right: 24px; }
-        .lightbox-img-container { max-width: 90vw; max-height: 80vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .lightbox-img-container { max-width: 90vw; max-height: 80vh; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: pan-y; /* allow vertical pan but we'll handle horizontal swipe */ }
         .lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.25s; border-radius: 2px; }
         .zoomed { transform: scale(2); }
         .lightbox-zoom { position: absolute; bottom: 24px; right: 28px; background: transparent; border: 0.5px solid rgba(255,183,197,0.25); color: rgba(255,240,241,0.7); font-size: 11px; font-family: 'Inter', sans-serif; padding: 9px 20px; cursor: pointer; transition: 0.2s; }
@@ -169,7 +176,6 @@
         @media (max-width: 768px) {
             .page { padding: 48px 20px 72px; }
             .gallery-box { padding: 18px 14px; }
-            .gallery-grid { grid-template-columns: repeat(2, 1fr); }
             .upload-box-inner { padding: 28px 20px 20px; }
             .btn-send { padding: 14px 40px; }
             .invitation-message { font-size: 13px; }
@@ -179,11 +185,13 @@
             .lightbox-prev { left: 12px; } .lightbox-next { right: 12px; }
             .lightbox-close { top: 16px; right: 16px; font-size: 20px; }
             .lightbox-zoom { bottom: 16px; right: 16px; padding: 7px 16px; }
+            .gallery-grid { gap: 4px; }
         }
 
         @media (max-width: 480px) {
             .page { padding: 36px 16px 60px; }
-            .gallery-grid { grid-template-columns: 1fr; }
+            /* Keep 3 columns always */
+            .gallery-grid { grid-template-columns: repeat(3, 1fr); gap: 3px; }
             .upload-frame { max-width: 100%; }
             .btn-upload { width: 100%; }
             .btn-send { width: 100%; padding: 14px 30px; }
@@ -198,6 +206,9 @@
             .lightbox-img-container { max-width: 95vw; max-height: 85vh; }
             .lightbox-nav { width: 32px; height: 32px; font-size: 16px; }
             .lightbox-zoom { padding: 5px 12px; font-size: 10px; }
+            /* smaller check on tiny screens */
+            .select-check { width: 16px; height: 16px; top: 4px; left: 4px; }
+            .select-check::after { font-size: 9px; }
         }
 
         @media (max-width: 360px) {
@@ -205,6 +216,7 @@
             .hashtag { font-size: 20px; }
             .btn-upload { font-size: 11px; letter-spacing: 0.12em; }
             .gallery-label { font-size: 10px; }
+            .gallery-grid { gap: 2px; }
         }
     </style>
 </head>
@@ -250,7 +262,12 @@
             </div>
         </div>
         <div class="btn-send-wrapper" id="sendWrapper"><button class="btn-send" id="submitBtn">Send to Gallery</button></div>
-        <div class="upload-progress" id="uploadProgress"></div>
+        <div class="upload-progress" id="uploadProgress">
+            <span class="progress-text" id="progressText">Uploading 0 / 0…</span>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+            </div>
+        </div>
     </div>
 
     <div class="gallery-wrapper">
@@ -300,6 +317,8 @@
         const downloadBtn = document.getElementById('downloadBtn');
         const viewAllBtn = document.getElementById('viewAllBtn');
         const uploadProgress = document.getElementById('uploadProgress');
+        const progressText = document.getElementById('progressText');
+        const progressFill = document.getElementById('progressFill');
 
         const pendingFiles = [];
         const galleryData = [];
@@ -359,8 +378,16 @@
             if (!loaded.length) return;
 
             submitBtn.disabled = true;
-            uploadProgress.textContent = `Uploading 0 / ${loaded.length}…`;
+            uploadProgress.classList.add('visible');
+            const total = loaded.length;
             let uploadedCount = 0;
+
+            function updateBar() {
+                const percent = total > 0 ? Math.round((uploadedCount / total) * 100) : 0;
+                progressFill.style.width = `${percent}%`;
+                progressText.textContent = `Uploading ${uploadedCount} / ${total} (${percent}%)`;
+            }
+            updateBar();
 
             for (let i = 0; i < loaded.length; i++) {
                 try {
@@ -368,21 +395,29 @@
                     const uploaded = await uploadFile(loaded[i].file, sigData);
                     galleryData.push(uploaded);
                     uploadedCount++;
-                    uploadProgress.textContent = `Uploading ${uploadedCount} / ${loaded.length}…`;
+                    updateBar();
                 } catch (err) {
                     console.error('Upload error', err);
-                    uploadProgress.textContent = `Error uploading "${loaded[i].file.name}". Please try again.`;
+                    progressText.textContent = `Error uploading "${loaded[i].file.name}". Please try again.`;
                     break;
                 }
             }
 
+            // Clean up
             pendingFiles.length = 0;
             previewGrid.innerHTML = '';
             sendWrapper.classList.remove('visible');
             submitBtn.disabled = false;
-            uploadProgress.textContent = uploadedCount === loaded.length
-                ? 'All photos uploaded successfully!'
-                : 'Some photos failed. Gallery refreshed.';
+            if (uploadedCount === total) {
+                progressText.textContent = 'All photos uploaded successfully!';
+            } else {
+                progressText.textContent = 'Some photos failed. Gallery refreshed.';
+            }
+            // Keep bar visible for a moment, then hide after 2s
+            setTimeout(() => {
+                uploadProgress.classList.remove('visible');
+                progressFill.style.width = '0%';
+            }, 2000);
             renderGallery();
         }
 
@@ -532,12 +567,14 @@
             viewAllBtn.textContent = expanded ? 'Show Less' : 'View All';
         });
 
+        /* ---------- Lightbox with swipe ---------- */
         const lightbox = document.getElementById('lightbox'),
               lightboxImg = document.getElementById('lightboxImg'),
               lightboxClose = document.getElementById('lightboxClose'),
               lightboxPrev = document.getElementById('lightboxPrev'),
               lightboxNext = document.getElementById('lightboxNext'),
-              lightboxZoomBtn = document.getElementById('lightboxZoom');
+              lightboxZoomBtn = document.getElementById('lightboxZoom'),
+              lightboxImgContainer = document.getElementById('lightboxImgContainer');
         let currentIndex = -1;
 
         function openLightbox(index) {
@@ -564,6 +601,32 @@
             currentIndex = (currentIndex + dir + galleryData.length) % galleryData.length;
             showImage(galleryData[currentIndex].url);
         }
+
+        // Swipe handling
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        lightboxImgContainer.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        lightboxImgContainer.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE_THRESHOLD) {
+                e.preventDefault(); // prevent page scroll
+                if (dx > 0) {
+                    navigate(-1); // swipe right -> previous
+                } else {
+                    navigate(1); // swipe left -> next
+                }
+            }
+        }, { passive: false });
 
         lightboxClose.addEventListener('click', closeLightbox);
         lightboxPrev.addEventListener('click', () => navigate(-1));
