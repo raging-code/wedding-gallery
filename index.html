@@ -51,7 +51,7 @@
             font-size: clamp(22px, 3vw, 30px); color: var(--petal); margin: 6px 0; letter-spacing: 0.05em;
         }
 
-        .invitation-message { /* ... (same as original) ... */
+        .invitation-message {
             width: 100%; max-width: 560px; margin: 0 auto 36px; text-align: center;
             font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 400; line-height: 1.15;
             letter-spacing: 0.02em; color: #31231a; white-space: pre-line;
@@ -103,7 +103,7 @@
         .gallery-label {
             font-size: 12px; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; color: #31231a;
         }
-        .gallery-actions { display: flex; gap: 5px; }
+        .gallery-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         .btn-select, .btn-select-all, .btn-download {
             font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; padding: 7px 16px; background: transparent; border: 0.5px solid var(--petal-border); color: #31231a; cursor: pointer; transition: 0.2s; white-space: nowrap;
         }
@@ -152,7 +152,7 @@
         footer { text-align: center; margin-top: 72px; padding-top: 28px; border-top: 0.5px solid var(--petal-border); display: flex; flex-direction: column; align-items: center; gap: 14px; }
         .footer-svg { display: block; }
 
-        /* Lightbox styles – unchanged */
+        /* Lightbox */
         .lightbox { position: fixed; inset: 0; z-index: 1000; background: rgba(20,12,8,0.94); display: none; align-items: center; justify-content: center; flex-direction: column; }
         .lightbox.open { display: flex; }
         .lightbox-close { position: absolute; top: 22px; right: 28px; font-size: 24px; color: rgba(255,240,241,0.8); cursor: pointer; background: none; border: none; }
@@ -165,12 +165,46 @@
         .lightbox-zoom { position: absolute; bottom: 24px; right: 28px; background: transparent; border: 0.5px solid rgba(255,183,197,0.25); color: rgba(255,240,241,0.7); font-size: 11px; font-family: 'Inter', sans-serif; padding: 9px 20px; cursor: pointer; transition: 0.2s; }
         .lightbox-zoom:hover { color: var(--petal); border-color: rgba(255,183,197,0.5); }
 
-        @media (max-width: 600px) {
-            .page { padding: 52px 20px 72px; }
+        /* ---------- Mobile & tablet refinements ---------- */
+        @media (max-width: 768px) {
+            .page { padding: 48px 20px 72px; }
+            .gallery-box { padding: 18px 14px; }
             .gallery-grid { grid-template-columns: repeat(2, 1fr); }
-            .upload-frame { max-width: 100%; }
-            .name-first, .name-second { font-size: clamp(44px, 13vw, 72px); }
+            .upload-box-inner { padding: 28px 20px 20px; }
+            .btn-send { padding: 14px 40px; }
+            .invitation-message { font-size: 13px; }
             .hashtag { font-size: 28px; }
+            .name-first, .name-second { font-size: clamp(44px, 12vw, 68px); }
+            .lightbox-nav { width: 36px; height: 36px; font-size: 18px; }
+            .lightbox-prev { left: 12px; } .lightbox-next { right: 12px; }
+            .lightbox-close { top: 16px; right: 16px; font-size: 20px; }
+            .lightbox-zoom { bottom: 16px; right: 16px; padding: 7px 16px; }
+        }
+
+        @media (max-width: 480px) {
+            .page { padding: 36px 16px 60px; }
+            .gallery-grid { grid-template-columns: 1fr; }
+            .upload-frame { max-width: 100%; }
+            .btn-upload { width: 100%; }
+            .btn-send { width: 100%; padding: 14px 30px; }
+            .gallery-top-bar { flex-direction: column; align-items: flex-start; }
+            .gallery-actions { justify-content: space-between; width: 100%; }
+            .ambient svg { transform: scale(0.7); transform-origin: center; }
+            .name-first, .name-second { font-size: clamp(36px, 10vw, 52px); }
+            .hashtag { font-size: 24px; }
+            .invitation-message { font-size: 12px; line-height: 1.25; }
+            .header-badge { gap: 8px; }
+            .badge-line { width: 32px; }
+            .lightbox-img-container { max-width: 95vw; max-height: 85vh; }
+            .lightbox-nav { width: 32px; height: 32px; font-size: 16px; }
+            .lightbox-zoom { padding: 5px 12px; font-size: 10px; }
+        }
+
+        @media (max-width: 360px) {
+            .name-first, .name-second { font-size: 32px; }
+            .hashtag { font-size: 20px; }
+            .btn-upload { font-size: 11px; letter-spacing: 0.12em; }
+            .gallery-label { font-size: 10px; }
         }
     </style>
 </head>
@@ -267,17 +301,14 @@
         const viewAllBtn = document.getElementById('viewAllBtn');
         const uploadProgress = document.getElementById('uploadProgress');
 
-        const pendingFiles = [];       // { file, dataUrl, loaded }
-        const galleryData = [];        // { id, url, name }
+        const pendingFiles = [];
+        const galleryData = [];
 
-        /* -------------------------------------------------- */
-        /*  Gallery fetching from Cloudinary (via Worker)     */
-        /* -------------------------------------------------- */
         async function loadGallery() {
             try {
                 const res = await fetch('/api/images');
                 const images = await res.json();
-                galleryData.length = 0; // clear
+                galleryData.length = 0;
                 images.forEach(img => {
                     galleryData.push({
                         id: img.id,
@@ -288,13 +319,10 @@
                 renderGallery();
             } catch (e) {
                 console.error('Failed to load gallery', e);
-                renderGallery(); // show empty state with error maybe
+                renderGallery();
             }
         }
 
-        /* -------------------------------------------------- */
-        /*  Upload flow: get signature → upload to Cloudinary */
-        /* -------------------------------------------------- */
         async function getUploadSignature() {
             const res = await fetch('/api/upload-signature', { method: 'POST' });
             if (!res.ok) throw new Error('Failed to obtain upload signature');
@@ -308,7 +336,7 @@
             formData.append('api_key', api_key);
             formData.append('timestamp', timestamp);
             formData.append('signature', signature);
-            formData.append('folder', 'wedding_gallery');   // keep consistent with backend
+            formData.append('folder', 'wedding_gallery');
 
             const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`, {
                 method: 'POST',
@@ -348,7 +376,6 @@
                 }
             }
 
-            // Clear pending previews
             pendingFiles.length = 0;
             previewGrid.innerHTML = '';
             sendWrapper.classList.remove('visible');
@@ -359,9 +386,6 @@
             renderGallery();
         }
 
-        /* -------------------------------------------------- */
-        /*  Preview handling (unchanged mostly)               */
-        /* -------------------------------------------------- */
         function updateSendButton() {
             sendWrapper.classList.toggle('visible', pendingFiles.some(f => f.loaded));
         }
@@ -399,9 +423,6 @@
             add.forEach(f => addFileToPreview(f));
         }
 
-        /* -------------------------------------------------- */
-        /*  Gallery rendering & selection logic              */
-        /* -------------------------------------------------- */
         function renderGallery() {
             galleryGrid.innerHTML = '';
             if (!galleryData.length) {
@@ -441,9 +462,6 @@
                 : 'Select All';
         }
 
-        /* -------------------------------------------------- */
-        /*  Event listeners                                  */
-        /* -------------------------------------------------- */
         fileInput.addEventListener('change', e => {
             if (e.target.files.length) {
                 processFiles(e.target.files);
@@ -514,9 +532,6 @@
             viewAllBtn.textContent = expanded ? 'Show Less' : 'View All';
         });
 
-        /* -------------------------------------------------- */
-        /*  Lightbox (unchanged)                             */
-        /* -------------------------------------------------- */
         const lightbox = document.getElementById('lightbox'),
               lightboxImg = document.getElementById('lightboxImg'),
               lightboxClose = document.getElementById('lightboxClose'),
@@ -564,7 +579,6 @@
             if (e.key === 'Escape') closeLightbox();
         });
 
-        // Initial load
         loadGallery();
     })();
 </script>
