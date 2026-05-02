@@ -134,7 +134,7 @@
         .btn-select.active { background:var(--rose-deep); color:white; border-color:var(--rose-deep); }
         .btn-download { display:none; background:var(--ink); color:var(--ivory); border-color:var(--ink); }
         .btn-download.visible { display:inline-block; }
-        .gallery-scroll { overflow-y:auto; max-height:540px; padding-right:2px; }
+        .gallery-scroll { overflow-y:auto; max-height:540px; padding-right:2px; transition: scroll-behavior 0.3s ease; }
         .gallery-scroll.expanded { max-height:none; overflow-y:visible; }
         .gallery-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
         .gallery-grid:not(.show-all) .gallery-item:nth-child(n+10) { display:none; }
@@ -234,7 +234,6 @@
                 <div class="story-add-icon"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M10 5v10M5 10h10" stroke="#c4a46b" stroke-width="1.6" stroke-linecap="round"/></svg></div>
                 <span class="story-add-label">Add<br>Video</span>
             </label>
-            <!-- placeholder cards will be injected here dynamically -->
         </div>
     </div>
 
@@ -316,7 +315,6 @@
             try {
                 const res = await fetch('/api/images');
                 const images = await res.json();
-                // FIX: API returns { id: "public_id", url: "secure_url" }
                 galleryData = images.map(img => ({ 
                     id: img.id, 
                     url: img.url, 
@@ -414,7 +412,19 @@
         selectModeBtn.addEventListener('click', () => { galleryGrid.classList.toggle('selection-mode'); selectModeBtn.classList.toggle('active'); if (!galleryGrid.classList.contains('selection-mode')) { galleryGrid.querySelectorAll('.gallery-item').forEach(el => el.classList.remove('selected')); updateDownloadBtn(); } });
         selectAllBtn.addEventListener('click', () => { if (!galleryGrid.classList.contains('selection-mode')) { alert('Press "Select" first.'); return; } const all = galleryGrid.querySelectorAll('.gallery-item'); const allSelected = getSelectedItems().length === galleryData.length; all.forEach(el => el.classList.toggle('selected', !allSelected)); updateDownloadBtn(); });
         downloadBtn.addEventListener('click', () => { getSelectedItems().forEach((item, i) => setTimeout(() => { const a = document.createElement('a'); a.href = item.url; a.download = item.name; a.click(); }, i * 200)); });
-        viewAllBtn.addEventListener('click', () => { const exp = galleryScroll.classList.toggle('expanded'); galleryGrid.classList.toggle('show-all', exp); viewAllBtn.textContent = exp ? 'Show Less' : 'View All'; });
+        
+        // FIX: When "View All" is clicked, scroll to top of gallery
+        viewAllBtn.addEventListener('click', () => {
+            const exp = galleryScroll.classList.toggle('expanded');
+            galleryGrid.classList.toggle('show-all', exp);
+            viewAllBtn.textContent = exp ? 'Show Less' : 'View All';
+            if (exp) {
+                // Scroll to top smoothly after a tiny delay to allow DOM to update
+                setTimeout(() => {
+                    galleryScroll.scrollTop = 0;
+                }, 50);
+            }
+        });
 
         // Photo lightbox
         const lightbox = document.getElementById('lightbox'), lightboxImg = document.getElementById('lightboxImg'), lightboxClose = document.getElementById('lightboxClose'), lightboxPrev = document.getElementById('lightboxPrev'), lightboxNext = document.getElementById('lightboxNext'), lightboxZoom = document.getElementById('lightboxZoom');
@@ -477,7 +487,6 @@
         }
 
         function getCloudNameFromUrl(url) {
-            // Extract cloud name from Cloudinary URL: https://res.cloudinary.com/YOUR_CLOUD_NAME/...
             const match = url.match(/res\.cloudinary\.com\/([^\/]+)/);
             return match ? match[1] : null;
         }
@@ -501,7 +510,6 @@
                 card.insertBefore(img, card.firstChild);
                 card.appendChild(durSpan);
                 
-                // FIX: Extract cloud name dynamically from the video URL
                 const cloudName = getCloudNameFromUrl(item.url);
                 const publicId = item.id;
                 if (cloudName && publicId) {
@@ -516,14 +524,64 @@
             });
         }
 
-        function openVideoLightbox(idx) { currentVideoIdx = idx; videoEl.src = videoData[idx].url; videoEl.load(); videoEl.play(); videoLightbox.classList.add('open'); }
-        function closeVideoLightbox() { videoEl.pause(); videoEl.src = ''; videoLightbox.classList.remove('open'); }
-        function navigateVideo(dir) { if (!videoData.length) return; currentVideoIdx = (currentVideoIdx + dir + videoData.length) % videoData.length; openVideoLightbox(currentVideoIdx); }
+        function openVideoLightbox(idx) { 
+            currentVideoIdx = idx; 
+            videoEl.src = videoData[idx].url; 
+            videoEl.load(); 
+            videoEl.play(); 
+            videoLightbox.classList.add('open'); 
+        }
+        
+        function closeVideoLightbox() { 
+            videoEl.pause(); 
+            videoEl.src = ''; 
+            videoLightbox.classList.remove('open'); 
+        }
+        
+        function navigateVideo(dir) { 
+            if (!videoData.length) return; 
+            currentVideoIdx = (currentVideoIdx + dir + videoData.length) % videoData.length; 
+            openVideoLightbox(currentVideoIdx); 
+        }
 
         vlClose.addEventListener('click', closeVideoLightbox);
         vlPrev.addEventListener('click', () => navigateVideo(-1));
         vlNext.addEventListener('click', () => navigateVideo(1));
-        document.addEventListener('keydown', e => { if (videoLightbox.classList.contains('open')) { if (e.key === 'Escape') closeVideoLightbox(); if (e.key === 'ArrowLeft') navigateVideo(-1); if (e.key === 'ArrowRight') navigateVideo(1); } });
+        
+        // Add swipe gesture for video lightbox
+        let videoTouchStartX = 0;
+        let videoTouchStartY = 0;
+        const VIDEO_SWIPE_THRESHOLD = 50;
+        
+        const videoLightboxElem = document.getElementById('videoLightbox');
+        videoLightboxElem.addEventListener('touchstart', (e) => {
+            videoTouchStartX = e.changedTouches[0].screenX;
+            videoTouchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+        
+        videoLightboxElem.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            const dx = touchEndX - videoTouchStartX;
+            const dy = touchEndY - videoTouchStartY;
+            
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > VIDEO_SWIPE_THRESHOLD) {
+                e.preventDefault();
+                if (dx > 0) {
+                    navigateVideo(-1); // swipe right -> previous
+                } else {
+                    navigateVideo(1); // swipe left -> next
+                }
+            }
+        }, { passive: false });
+        
+        document.addEventListener('keydown', e => { 
+            if (videoLightbox.classList.contains('open')) { 
+                if (e.key === 'Escape') closeVideoLightbox(); 
+                if (e.key === 'ArrowLeft') navigateVideo(-1); 
+                if (e.key === 'ArrowRight') navigateVideo(1); 
+            } 
+        });
 
         videoFileInput.addEventListener('change', async e => {
             const files = Array.from(e.target.files).filter(f => f.type.startsWith('video/'));
