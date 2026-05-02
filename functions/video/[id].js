@@ -1,6 +1,6 @@
 export async function onRequest(context) {
   const { env, params } = context;
-  const videoId = params.id;   // the file name from the URL
+  const videoId = params.id;                // may still be percent‑encoded
 
   const keyId = env.B2_KEY_ID;
   const appKey = env.B2_APPLICATION_KEY;
@@ -26,30 +26,21 @@ export async function onRequest(context) {
   const downloadUrl = authData.downloadUrl;
   const authToken = authData.authorizationToken;
 
-  // 2. Build the full file URL (this is what we'll check)
-  const fileUrl = `${downloadUrl}/file/${bucketName}/${encodeURIComponent(videoId)}`;
+  // 2. Decode the incoming videoId (remove any existing encoding), then re‑encode once
+  const decodedName = decodeURIComponent(videoId);          // e.g., "Creamy Steak Bites Recipe.mp4"
+  const encodedName = encodeURIComponent(decodedName);      // e.g., "Creamy%20Steak%20Bites%20Recipe.mp4"
+  const fileUrl = `${downloadUrl}/file/${bucketName}/${encodedName}`;
 
-  // 3. Try to fetch the file from B2
+  // 3. Fetch the video from B2
   const b2Response = await fetch(fileUrl, {
     headers: { Authorization: authToken },
   });
 
-  // ★ DEBUG: If file not found, return details so we can see what's wrong
   if (!b2Response.ok) {
-    const diagnostic = {
-      error: 'Video not found on B2',
-      bucketNameUsed: bucketName,
-      storageFileName: videoId,
-      constructedUrl: fileUrl,
-      b2Status: b2Response.status,
-    };
-    return new Response(JSON.stringify(diagnostic, null, 2), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response('Video not found', { status: 404 });
   }
 
-  // 4. Success – stream the video
+  // 4. Stream the video back to the browser
   const newHeaders = new Headers(b2Response.headers);
   newHeaders.set('Cache-Control', 'public, max-age=31536000, immutable');
   newHeaders.set('Access-Control-Allow-Origin', '*');
