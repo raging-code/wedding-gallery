@@ -41,13 +41,17 @@ export async function onRequest(context) {
     if (!listResp.ok) throw new Error('Listing failed');
     const listData = await listResp.json();
 
-    const files = listData.files || [];
-    const videos = files.map(f => ({
-      id: f.fileName,
-      url: `/video/${encodeURIComponent(f.fileName)}`,   // proxy route
-      name: f.fileName,
-      size: f.contentLength,
-    }));
+// After getting listData.files...
+const files = listData.files || [];
+const videos = files.map(f => {
+  const originalName = decodeURIComponent(f.fileName);
+  return {
+    id: f.fileName,                                    // raw B2 name (for future use)
+    url: `/video/${encodeURIComponent(originalName)}`,  // single‑encoded proxy URL
+    name: f.fileName,
+    size: f.contentLength,
+  };
+});
 
     return new Response(JSON.stringify(videos), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=30' },
