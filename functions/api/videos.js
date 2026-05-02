@@ -16,7 +16,7 @@ export async function onRequest(context) {
   const bucketName = env.B2_BUCKET_NAME;
 
   if (!keyId || !appKey || !bucketId || !bucketName) {
-    return new Response(JSON.stringify({ error: 'Missing B2 configuration', missing: { keyId: !keyId, appKey: !appKey, bucketId: !bucketId, bucketName: !bucketName } }), {
+    return new Response(JSON.stringify({ error: 'Missing B2 configuration' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
@@ -24,7 +24,7 @@ export async function onRequest(context) {
 
   const auth = btoa(`${keyId}:${appKey}`);
   try {
-    // Authorize
+    // 1. Authorize
     const authResp = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
       headers: { Authorization: `Basic ${auth}` },
     });
@@ -33,11 +33,16 @@ export async function onRequest(context) {
     const apiUrl = authData.apiUrl;
     const authToken = authData.authorizationToken;
 
-    // List files
+    // 2. List files – delimiter removed (or use '/' if needed)
     const listResp = await fetch(`${apiUrl}/b2api/v2/b2_list_file_names`, {
       method: 'POST',
       headers: { Authorization: authToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bucketId, maxFileCount: 1000, prefix: '', delimiter: '' }),
+      body: JSON.stringify({
+        bucketId,
+        maxFileCount: 1000,
+        prefix: '',
+        // delimiter: ''   ← removed because it must be a single character
+      }),
     });
 
     if (!listResp.ok) {
@@ -58,7 +63,11 @@ export async function onRequest(context) {
     });
 
     return new Response(JSON.stringify(videos), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=30' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'max-age=30',
+      },
     });
   } catch(e) {
     return new Response(JSON.stringify({ error: e.message }), {
