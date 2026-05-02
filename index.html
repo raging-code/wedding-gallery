@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Wedding Gallery — Claudine &amp; Mark</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
-
     <style>
         :root {
             --ivory:        #faf6f0;
@@ -21,10 +20,8 @@
             --ink-50:       rgba(28,17,14,0.5);
             --ink-20:       rgba(28,17,14,0.15);
         }
- 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
- 
         body {
             background: var(--ivory);
             font-family: 'Jost', sans-serif;
@@ -32,13 +29,11 @@
             overflow-x: hidden;
             min-height: 100vh;
         }
- 
         body::before {
             content: '';
             position: fixed; inset: 0; z-index: 0; pointer-events: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
         }
- 
         .ambient { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
         .ambient svg { position: absolute; opacity: 0.13; }
         .p1 { top: -40px; left: -30px;     animation: pDrift  9s ease-in-out infinite; }
@@ -46,312 +41,96 @@
         .p3 { bottom: 12%; left: 1%;       animation: pDrift 10s ease-in-out infinite 4s; }
         .p4 { bottom: -30px; right: -20px; animation: pDrift 13s ease-in-out infinite 1s; }
         .p5 { top: 45%;   left: -15px;     animation: pDrift  8s ease-in-out infinite 3s; }
- 
-        @keyframes pDrift {
-            0%,100% { transform: translateY(0) rotate(-3deg); }
-            50%      { transform: translateY(-18px) rotate(5deg); }
-        }
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(28px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spin    { to { transform: rotate(360deg); } }
-        @keyframes shimmer { 0%,100%{ opacity:.5 } 50%{ opacity:1 } }
-        @keyframes pulseRing {
-            0%   { transform: scale(1);   opacity:.6; }
-            100% { transform: scale(1.7); opacity:0; }
-        }
- 
-        /* ── Page ── */
-        .page {
-            position: relative; z-index: 1;
-            max-width: 700px; margin: 0 auto;
-            padding: 80px 32px 110px;
-            animation: fadeUp 1.1s cubic-bezier(.22,.68,0,1.2) both;
-        }
- 
-        /* ══ HEADER ══ */
+        @keyframes pDrift { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-18px) rotate(5deg); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulseRing { 0% { transform: scale(1); opacity:.6; } 100% { transform: scale(1.7); opacity:0; } }
+        .page { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; padding: 80px 32px 110px; animation: fadeUp 1.1s cubic-bezier(.22,.68,0,1.2) both; }
         header { text-align: center; margin-bottom: 70px; }
- 
-        .header-ornament {
-            display: flex; align-items: center; justify-content: center;
-            gap: 18px; margin-bottom: 44px;
-        }
+        .header-ornament { display: flex; align-items: center; justify-content: center; gap: 18px; margin-bottom: 44px; }
         .orn-rule { height: 0.5px; width: 64px; background: linear-gradient(90deg, transparent, var(--gold) 50%, transparent); }
         .orn-center { display: flex; align-items: center; gap: 8px; }
- 
         .couple-block { position: relative; margin-bottom: 10px; }
-        .name-first, .name-second {
-            display: block;
-            font-family: 'Cormorant Garamond', serif;
-            font-style: italic; font-weight: 300;
-            font-size: clamp(62px, 10vw, 108px);
-            line-height: 0.85; letter-spacing: -0.02em;
-            color: var(--ink);
-        }
-        .name-amp {
-            display: inline-block;
-            font-family: 'Cormorant Garamond', serif;
-            font-style: italic; font-weight: 600;
-            font-size: clamp(20px, 3vw, 28px);
-            color: var(--gold); letter-spacing: 0.12em;
-            margin: 8px 0 4px;
-        }
+        .name-first, .name-second { display: block; font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 300; font-size: clamp(62px, 10vw, 108px); line-height: 0.85; letter-spacing: -0.02em; color: var(--ink); }
+        .name-amp { display: inline-block; font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600; font-size: clamp(20px, 3vw, 28px); color: var(--gold); letter-spacing: 0.12em; margin: 8px 0 4px; }
         .date-tag { display: inline-flex; align-items: center; gap: 14px; margin-top: 28px; }
         .date-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); }
-        .date-text {
-            font-size: 10px; font-weight: 300; letter-spacing: 0.38em;
-            text-transform: uppercase; color: var(--ink-50);
-        }
- 
-        /* ══ INVITATION ══ */
-        .invitation-message {
-            margin: 0 auto 20px;
-            max-width: 540px;
-            text-align: center;
-            font-family: 'Jost', sans-serif;
-            font-size: 18px;
-            font-weight: 300;
-            line-height: 1.8;
-            letter-spacing: 0.02em;
-            color: var(--ink-50);
-        }
-        .hashtag {
-            font-family: 'Cormorant Garamond', serif;
-            font-style: italic; font-weight: 600;
-            font-size: clamp(30px, 6vw, 44px);
-            letter-spacing: 0.02em; line-height: 1;
-        }
-        .ht-gold { color: var(--gold); }
-        .ht-dark { color: var(--ink); }
- 
-        /* ══ SECTION DIVIDER ══ */
-        .section-divider {
-            display: flex; align-items: center; gap: 20px; margin-bottom: 22px;
-        }
+        .date-text { font-size: 10px; font-weight: 300; letter-spacing: 0.38em; text-transform: uppercase; color: var(--ink-50); }
+        .invitation-message { margin: 0 auto 20px; max-width: 540px; text-align: center; font-family: 'Jost', sans-serif; font-size: 18px; font-weight: 300; line-height: 1.8; letter-spacing: 0.02em; color: var(--ink-50); }
+        .hashtag { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600; font-size: clamp(30px, 6vw, 44px); letter-spacing: 0.02em; line-height: 1; }
+        .ht-gold { color: var(--gold); } .ht-dark { color: var(--ink); }
+        .section-divider { display: flex; align-items: center; gap: 20px; margin-bottom: 22px; }
         .div-rule { flex:1; height:0.5px; background: linear-gradient(90deg,transparent,var(--rose-border) 50%,transparent); }
-        .div-label {
-            font-size: 9px; font-weight: 400; letter-spacing: 0.35em;
-            text-transform: uppercase; color: var(--rose-deep); white-space: nowrap;
-        }
+        .div-label { font-size: 9px; font-weight: 400; letter-spacing: 0.35em; text-transform: uppercase; color: var(--rose-deep); white-space: nowrap; }
         .div-diamond { width:5px; height:5px; background:var(--rose); transform:rotate(45deg); flex-shrink:0; }
- 
-        /* ══════════════════════════════
-           VIDEO STORIES SECTION (Facebook story layout)
-        ══════════════════════════════ */
-        .video-section {
-            width: 100%; margin-bottom: 52px;
-            animation: fadeUp 1.1s cubic-bezier(.22,.68,0,1.2) 0.1s both;
-        }
-        .video-section-header {
-            display: flex; align-items: flex-end; justify-content: space-between;
-            margin-bottom: 16px;
-        }
-        .video-section-title {
-            font-family: 'Cormorant Garamond', serif;
-            font-style: italic; font-weight: 400;
-            font-size: 24px; color: var(--ink); letter-spacing: 0.02em; line-height: 1;
-        }
-        .video-section-sub {
-            font-size: 9px; font-weight: 300; letter-spacing: 0.3em;
-            text-transform: uppercase; color: var(--ink-50); margin-top: 4px;
-        }
-        .btn-add-video-top {
-            font-family: 'Jost', sans-serif;
-            font-size: 9px; font-weight: 400; letter-spacing: 0.24em;
-            text-transform: uppercase; padding: 9px 20px;
-            background: transparent; border: 0.5px solid var(--rose-border);
-            color: var(--ink); cursor: pointer; transition: all .22s; white-space: nowrap;
-            display: inline-block;
-        }
+        /* video stories */
+        .video-section { width: 100%; margin-bottom: 52px; animation: fadeUp 1.1s cubic-bezier(.22,.68,0,1.2) 0.1s both; }
+        .video-section-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; }
+        .video-section-title { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 400; font-size: 24px; color: var(--ink); }
+        .video-section-sub { font-size: 9px; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-50); margin-top: 4px; }
+        .btn-add-video-top { font-family: 'Jost', sans-serif; font-size: 9px; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; padding: 9px 20px; background: transparent; border: 0.5px solid var(--rose-border); color: var(--ink); cursor: pointer; transition: all .22s; white-space: nowrap; }
         .btn-add-video-top:hover { background: var(--rose-pale); }
         #video-file-input { display: none; }
- 
-        .stories-strip {
-            display: flex; gap: 10px;
-            overflow-x: auto; overflow-y: visible;
-            padding: 6px 2px 14px;
-            scroll-snap-type: x mandatory;
-            -webkit-overflow-scrolling: touch;
-        }
+        .stories-strip { display: flex; gap: 10px; overflow-x: auto; padding: 6px 2px 14px; scroll-snap-type: x mandatory; }
         .stories-strip::-webkit-scrollbar { height: 3px; }
         .stories-strip::-webkit-scrollbar-track { background: transparent; }
         .stories-strip::-webkit-scrollbar-thumb { background: var(--rose-border); border-radius: 2px; }
- 
-        .story-add-card {
-            flex-shrink: 0; width: 108px; height: 180px;
-            border-radius: 12px;
-            background: #fdfaf6;
-            border: 0.5px dashed var(--rose);
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 10px; cursor: pointer;
-            transition: all .25s; scroll-snap-align: start;
-        }
+        .story-add-card { flex-shrink: 0; width: 108px; height: 180px; border-radius: 12px; background: #fdfaf6; border: 0.5px dashed var(--rose); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: all .25s; scroll-snap-align: start; }
         .story-add-card:hover { background: var(--rose-pale); border-color: var(--rose-deep); }
-        .story-add-icon {
-            width: 44px; height: 44px; border-radius: 50%;
-            background: var(--gold-pale); border: 0.5px solid var(--gold);
-            display: flex; align-items: center; justify-content: center;
-        }
-        .story-add-label {
-            font-size: 9px; font-weight: 400; letter-spacing: 0.2em;
-            text-transform: uppercase; color: var(--ink-50);
-            text-align: center; line-height: 1.5;
-        }
- 
-        .story-card {
-            flex-shrink: 0; width: 108px; height: 180px;
-            border-radius: 12px; overflow: hidden;
-            position: relative; cursor: pointer;
-            background: #1c110e; scroll-snap-align: start;
-            transition: transform .22s;
-            box-shadow: 0 6px 20px rgba(28,17,14,0.18);
-        }
+        .story-add-icon { width: 44px; height: 44px; border-radius: 50%; background: var(--gold-pale); border: 0.5px solid var(--gold); display: flex; align-items: center; justify-content: center; }
+        .story-add-label { font-size: 9px; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-50); text-align: center; line-height: 1.5; }
+        .story-card { flex-shrink: 0; width: 108px; height: 180px; border-radius: 12px; overflow: hidden; position: relative; cursor: pointer; background: #1c110e; scroll-snap-align: start; transition: transform .22s; box-shadow: 0 6px 20px rgba(28,17,14,0.18); }
         .story-card:hover { transform: scale(1.04) translateY(-2px); }
         .story-video-thumb { width:100%; height:100%; object-fit:cover; display:block; opacity:.85; }
-        .story-overlay {
-            position:absolute; inset:0;
-            background: linear-gradient(180deg, rgba(0,0,0,0.04) 0%, rgba(28,17,14,0.6) 100%);
-        }
-        .story-play {
-            position:absolute; top:50%; left:50%;
-            transform:translate(-50%,-50%);
-            width:38px; height:38px; border-radius:50%;
-            background:rgba(255,255,255,0.18);
-            border:1px solid rgba(255,255,255,0.55);
-            backdrop-filter:blur(4px);
-            display:flex; align-items:center; justify-content:center;
-        }
-        .story-play::before {
-            content:''; display:block;
-            width:0; height:0; border-style:solid;
-            border-width:6px 0 6px 11px;
-            border-color:transparent transparent transparent rgba(255,255,255,0.9);
-            margin-left:2px;
-        }
-        .story-play::after {
-            content:''; position:absolute; inset:-5px;
-            border-radius:50%; border:1px solid rgba(255,255,255,0.25);
-            animation: pulseRing 2.2s ease-out infinite;
-        }
-        .story-duration {
-            position:absolute; bottom:9px; right:9px;
-            font-size:9px; font-weight:400; letter-spacing:0.06em;
-            color:rgba(255,255,255,0.8);
-            background:rgba(0,0,0,0.38); padding:2px 6px; border-radius:3px;
-        }
-        .story-uploading {
-            position:absolute; inset:0; background:rgba(28,17,14,0.72);
-            display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
-        }
+        .story-overlay { position:absolute; inset:0; background: linear-gradient(180deg, rgba(0,0,0,0.04) 0%, rgba(28,17,14,0.6) 100%); }
+        .story-play { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.55); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; }
+        .story-play::before { content:''; width:0; height:0; border-style:solid; border-width:6px 0 6px 11px; border-color:transparent transparent transparent rgba(255,255,255,0.9); margin-left:2px; }
+        .story-play::after { content:''; position:absolute; inset:-5px; border-radius:50%; border:1px solid rgba(255,255,255,0.25); animation: pulseRing 2.2s ease-out infinite; }
+        .story-duration { position:absolute; bottom:9px; right:9px; font-size:9px; background:rgba(0,0,0,0.38); padding:2px 6px; border-radius:3px; color:white; }
+        .story-uploading { position:absolute; inset:0; background:rgba(28,17,14,0.72); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
         .story-uploading-text { font-size:9px; color:rgba(255,255,255,0.7); letter-spacing:.15em; text-transform:uppercase; }
- 
-        .story-placeholder-card {
-            flex-shrink: 0; width: 108px; height: 180px;
-            border-radius: 12px;
-            background: #fefaf5;
-            border: 1px solid var(--rose-border);
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 12px;
-            scroll-snap-align: start;
-            opacity: 0.7;
-        }
-        .story-placeholder-icon {
-            width: 44px; height: 44px;
-            border-radius: 50%;
-            background: rgba(201,160,168,0.12);
-            border: 1px dashed var(--rose);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .story-placeholder-text {
-            font-size: 8px;
-            font-weight: 300;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            color: var(--ink-50);
-            text-align: center;
-        }
- 
-        /* ══════════════════════════════
-           UNIFIED UPLOAD + GALLERY BOX (PHOTOS)
-        ══════════════════════════════ */
-        .unified-box {
-            background: #fdfaf6;
-            border: 0.5px solid var(--rose-border);
-            border-radius: 3px;
-            padding: 0; position: relative; overflow: hidden;
-            box-shadow: 0 0 0 4px rgba(196,164,107,0.04), 0 1px 0 rgba(201,160,168,0.2), 0 12px 48px rgba(28,17,14,0.06);
-            animation: fadeUp 1.1s cubic-bezier(.22,.68,0,1.2) 0.2s both;
-        }
-        .unified-box::before { content:''; position:absolute; top:8px; left:8px;  width:18px; height:18px; border-top:0.5px solid var(--gold); border-left:0.5px solid var(--gold); pointer-events:none; z-index:2; }
-        .unified-box::after  { content:''; position:absolute; top:8px; right:8px; width:18px; height:18px; border-top:0.5px solid var(--gold); border-right:0.5px solid var(--gold); pointer-events:none; z-index:2; }
+        .story-placeholder-card { flex-shrink: 0; width: 108px; height: 180px; border-radius: 12px; background: #fefaf5; border: 1px solid var(--rose-border); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; scroll-snap-align: start; opacity: 0.7; }
+        .story-placeholder-icon { width: 44px; height: 44px; border-radius: 50%; background: rgba(201,160,168,0.12); border: 1px dashed var(--rose); display: flex; align-items: center; justify-content: center; }
+        .story-placeholder-text { font-size: 8px; font-weight: 300; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-50); text-align: center; }
+        /* unified box for photos */
+        .unified-box { background: #fdfaf6; border: 0.5px solid var(--rose-border); border-radius: 3px; position: relative; overflow: hidden; box-shadow: 0 0 0 4px rgba(196,164,107,0.04), 0 1px 0 rgba(201,160,168,0.2), 0 12px 48px rgba(28,17,14,0.06); animation: fadeUp 1.1s cubic-bezier(.22,.68,0,1.2) 0.2s both; }
+        .unified-box::before, .unified-box::after { content:''; position:absolute; top:8px; width:18px; height:18px; border-top:0.5px solid var(--gold); pointer-events:none; z-index:2; }
+        .unified-box::before { left:8px; border-left:0.5px solid var(--gold); }
+        .unified-box::after { right:8px; border-right:0.5px solid var(--gold); }
         .corner-br, .corner-bl { display:block; position:absolute; width:18px; height:18px; z-index:2; pointer-events:none; }
         .corner-br { bottom:8px; right:8px; border-bottom:0.5px solid var(--gold); border-right:0.5px solid var(--gold); }
-        .corner-bl { bottom:8px; left:8px;  border-bottom:0.5px solid var(--gold); border-left:0.5px solid var(--gold); }
- 
+        .corner-bl { bottom:8px; left:8px; border-bottom:0.5px solid var(--gold); border-left:0.5px solid var(--gold); }
         .upload-panel { padding: 36px 32px 24px; }
-        .upload-box-inner {
-            text-align:center; cursor:pointer;
-            transition:background .35s; border-radius:2px; padding:20px 20px 16px;
-        }
+        .upload-box-inner { text-align:center; cursor:pointer; transition:background .35s; border-radius:2px; padding:20px 20px 16px; }
         .upload-box-inner:hover, .upload-box-inner.drag-active { background:rgba(196,164,107,0.04); }
         #file-input { display:none; }
         .upload-icon-wrap { width:56px; height:56px; margin:0 auto 18px; position:relative; }
-        .upload-icon-bg {
-            position:absolute; inset:0; border-radius:50%;
-            border:0.5px solid var(--rose);
-            background:radial-gradient(circle at 50% 40%, rgba(196,164,107,0.08), transparent 70%);
-        }
+        .upload-icon-bg { position:absolute; inset:0; border-radius:50%; border:0.5px solid var(--rose); background:radial-gradient(circle at 50% 40%, rgba(196,164,107,0.08), transparent 70%); }
         .upload-icon-inner { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
-        .btn-upload {
-            display:inline-block; font-family:'Jost',sans-serif;
-            font-size:10px; font-weight:400; letter-spacing:0.32em; text-transform:uppercase;
-            padding:12px 40px; background:transparent; border:0.5px solid var(--ink-20);
-            color:var(--ink); cursor:pointer; transition:all .3s; margin-bottom:12px;
-        }
+        .btn-upload { display:inline-block; font-family:'Jost',sans-serif; font-size:10px; font-weight:400; letter-spacing:0.32em; text-transform:uppercase; padding:12px 40px; background:transparent; border:0.5px solid var(--ink-20); color:var(--ink); cursor:pointer; transition:all .3s; margin-bottom:12px; }
         .btn-upload:hover { background:var(--ink); color:var(--ivory); border-color:var(--ink); }
         .file-info { font-size:11px; font-weight:300; letter-spacing:0.08em; color:var(--ink-50); }
         .preview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(68px,1fr)); gap:5px; margin-top:16px; }
         .preview-item { aspect-ratio:1; background:var(--parchment); border-radius:1px; overflow:hidden; position:relative; }
         .preview-item img { width:100%; height:100%; object-fit:cover; display:block; }
-        .rm-preview {
-            position:absolute; inset:0; background:rgba(28,17,14,0.5);
-            display:flex; align-items:center; justify-content:center;
-            opacity:0; transition:.2s; border:none; color:white; font-size:13px; cursor:pointer;
-        }
+        .rm-preview { position:absolute; inset:0; background:rgba(28,17,14,0.5); display:flex; align-items:center; justify-content:center; opacity:0; transition:.2s; border:none; color:white; font-size:13px; cursor:pointer; }
         .preview-item:hover .rm-preview { opacity:1; }
         .btn-send-wrapper { display:none; margin-top:20px; text-align:center; }
         .btn-send-wrapper.visible { display:block; }
-        .btn-send {
-            font-family:'Jost',sans-serif; font-size:10px; font-weight:400;
-            letter-spacing:0.32em; text-transform:uppercase; padding:14px 60px;
-            background:var(--ink); color:var(--ivory); border:none; cursor:pointer;
-            transition:all .3s; position:relative; overflow:hidden;
-        }
+        .btn-send { font-family:'Jost',sans-serif; font-size:10px; font-weight:400; letter-spacing:0.32em; text-transform:uppercase; padding:14px 60px; background:var(--ink); color:var(--ivory); border:none; cursor:pointer; transition:all .3s; position:relative; overflow:hidden; }
         .btn-send::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg,transparent 40%,rgba(196,164,107,0.15) 100%); pointer-events:none; }
         .btn-send:hover { opacity:.8; transform:translateY(-2px); }
- 
-        .box-inner-divider {
-            display:flex; align-items:center; gap:16px; padding:0 32px; margin-bottom:0;
-        }
-        .box-inner-rule   { flex:1; height:0.5px; background:var(--rose-border); }
-        .box-inner-label  { font-size:9px; font-weight:400; letter-spacing:0.35em; text-transform:uppercase; color:var(--rose-deep); white-space:nowrap; }
+        .box-inner-divider { display:flex; align-items:center; gap:16px; padding:0 32px; margin-bottom:0; }
+        .box-inner-rule { flex:1; height:0.5px; background:var(--rose-border); }
+        .box-inner-label { font-size:9px; font-weight:400; letter-spacing:0.35em; text-transform:uppercase; color:var(--rose-deep); white-space:nowrap; }
         .box-inner-diamond { width:4px; height:4px; background:var(--rose); transform:rotate(45deg); flex-shrink:0; }
- 
         .gallery-panel { padding: 24px 28px 28px; }
         .gallery-top-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
-        .gallery-label { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:400; font-size:22px; color:var(--ink); letter-spacing:0.02em; line-height:1; }
+        .gallery-label-block { display:flex; flex-direction:column; gap:3px; }
+        .gallery-label { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:400; font-size:22px; color:var(--ink); }
         .gallery-sublabel { font-size:9px; font-weight:300; letter-spacing:0.3em; text-transform:uppercase; color:var(--ink-50); }
         .gallery-actions { display:flex; gap:6px; }
-        .btn-select, .btn-select-all, .btn-download {
-            font-family:'Jost',sans-serif; font-size:9px; font-weight:400; letter-spacing:0.22em;
-            text-transform:uppercase; padding:8px 16px; background:transparent;
-            border:0.5px solid var(--rose-border); color:var(--ink); cursor:pointer; transition:all .22s; white-space:nowrap;
-        }
+        .btn-select, .btn-select-all, .btn-download { font-family:'Jost',sans-serif; font-size:9px; font-weight:400; letter-spacing:0.22em; text-transform:uppercase; padding:8px 16px; background:transparent; border:0.5px solid var(--rose-border); color:var(--ink); cursor:pointer; transition:all .22s; white-space:nowrap; }
         .btn-select.active { background:var(--rose-deep); color:white; border-color:var(--rose-deep); }
         .btn-download { display:none; background:var(--ink); color:var(--ivory); border-color:var(--ink); }
         .btn-download.visible { display:inline-block; }
@@ -359,66 +138,92 @@
         .gallery-scroll.expanded { max-height:none; overflow-y:visible; }
         .gallery-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
         .gallery-grid:not(.show-all) .gallery-item:nth-child(n+10) { display:none; }
-        .gallery-item {
-            aspect-ratio:1; cursor:pointer; border:2px solid transparent;
-            border-radius:1px; overflow:hidden; transition:all .22s;
-            background:var(--parchment); position:relative;
-        }
+        .gallery-item { aspect-ratio:1; cursor:pointer; border:2px solid transparent; border-radius:1px; overflow:hidden; transition:all .22s; background:var(--parchment); position:relative; }
         .gallery-item.selected { border-color:var(--gold); }
         .gallery-item img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .4s; }
         .gallery-item:hover img { transform:scale(1.04); }
-        .select-check {
-            position:absolute; top:6px; left:6px; width:20px; height:20px; border-radius:50%;
-            background:rgba(253,250,246,0.9); border:1.5px solid var(--gold);
-            display:flex; align-items:center; justify-content:center;
-            opacity:0; transition:.2s; pointer-events:none;
-        }
+        .select-check { position:absolute; top:6px; left:6px; width:20px; height:20px; border-radius:50%; background:rgba(253,250,246,0.9); border:1.5px solid var(--gold); display:flex; align-items:center; justify-content:center; opacity:0; transition:.2s; pointer-events:none; }
         .gallery-grid.selection-mode .select-check, .gallery-item:hover .select-check { opacity:1; }
         .gallery-item.selected .select-check { opacity:1; background:var(--gold); border-color:var(--gold); }
         .select-check::after { content:'✓'; color:white; font-size:10px; font-weight:500; opacity:0; }
         .gallery-item.selected .select-check::after { opacity:1; }
         .no-photos { grid-column:1/-1; padding:52px 0; text-align:center; }
+        .no-photos-inner { display:flex; flex-direction:column; align-items:center; gap:12px; }
+        .no-photos-icon { width:44px; height:44px; border-radius:50%; border:0.5px solid var(--rose-border); display:flex; align-items:center; justify-content:center; animation:shimmer 3s ease-in-out infinite; }
+        .no-photos-text { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:16px; color:var(--ink-50); letter-spacing:0.06em; }
         .view-all-wrapper { text-align:center; margin-top:16px; }
-        .btn-view-all {
-            font-family:'Jost',sans-serif; font-size:9px; font-weight:400; letter-spacing:0.3em;
-            text-transform:uppercase; padding:10px 30px; background:transparent;
-            border:0.5px solid var(--rose-border); color:var(--ink-50); cursor:pointer; transition:.22s;
-        }
+        .btn-view-all { font-family:'Jost',sans-serif; font-size:9px; font-weight:400; letter-spacing:0.3em; text-transform:uppercase; padding:10px 30px; background:transparent; border:0.5px solid var(--rose-border); color:var(--ink-50); cursor:pointer; transition:.22s; }
         .btn-view-all:hover { color:var(--ink); border-color:var(--rose); }
- 
         footer { text-align:center; margin-top:80px; padding-top:32px; display:flex; flex-direction:column; align-items:center; gap:16px; }
         .lightbox, .video-lightbox { position:fixed; inset:0; z-index:1000; background:rgba(14,8,5,0.96); display:none; align-items:center; justify-content:center; flex-direction:column; backdrop-filter:blur(2px); }
         .lightbox.open, .video-lightbox.open { display:flex; }
-        .lightbox-close, .video-lightbox-close { position:absolute; top:24px; right:32px; font-size:22px; color:rgba(250,246,240,0.6); cursor:pointer; background:none; border:none; }
-        .lightbox-nav, .video-lightbox-nav {
-            position:absolute; top:50%; transform:translateY(-50%);
-            background:transparent; border:0.5px solid rgba(196,164,107,0.25);
-            color:rgba(250,246,240,0.6); font-size:20px; width:46px; height:46px;
-            display:flex; align-items:center; justify-content:center;
-            cursor:pointer; border-radius:50%;
-        }
+        .lightbox-close, .video-lightbox-close { position:absolute; top:24px; right:32px; font-size:22px; color:rgba(250,246,240,0.6); cursor:pointer; background:none; border:none; transition:color .2s; }
+        .lightbox-close:hover, .video-lightbox-close:hover { color:var(--gold); }
+        .lightbox-nav, .video-lightbox-nav { position:absolute; top:50%; transform:translateY(-50%); background:transparent; border:0.5px solid rgba(196,164,107,0.25); color:rgba(250,246,240,0.6); font-size:20px; width:46px; height:46px; display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius:50%; transition:all .2s; }
+        .lightbox-nav:hover, .video-lightbox-nav:hover { background:rgba(196,164,107,0.12); color:var(--gold); border-color:rgba(196,164,107,0.5); }
         .lightbox-prev, .vl-prev { left:28px; } .lightbox-next, .vl-next { right:28px; }
-        .lightbox-img { max-width:90vw; max-height:80vh; object-fit:contain; transition:transform .3s; }
+        .lightbox-img-container { max-width:90vw; max-height:80vh; display:flex; align-items:center; justify-content:center; }
+        .lightbox-img { max-width:100%; max-height:100%; object-fit:contain; transition:transform .3s cubic-bezier(.22,.68,0,1.2); border-radius:1px; }
         .zoomed { transform:scale(2.1); }
-        .lightbox-zoom, .video-el { max-width:min(90vw,480px); max-height:80vh; border-radius:12px; }
+        .lightbox-footer { position:absolute; bottom:24px; display:flex; gap:12px; align-items:center; }
+        .lightbox-zoom { background:transparent; border:0.5px solid rgba(196,164,107,0.25); color:rgba(250,246,240,0.6); font-size:9px; font-family:'Jost',sans-serif; letter-spacing:0.28em; text-transform:uppercase; padding:9px 22px; cursor:pointer; transition:all .2s; }
+        .lightbox-zoom:hover { color:var(--gold); border-color:rgba(196,164,107,0.5); }
+        .video-el { max-width:min(90vw,480px); max-height:80vh; border-radius:12px; box-shadow:0 32px 80px rgba(0,0,0,.6); background:#000; outline:none; }
         @media (max-width:600px) {
             .page { padding:56px 20px 80px; }
-            .story-card, .story-add-card, .story-placeholder-card { width:92px; height:156px; }
             .gallery-grid { grid-template-columns:repeat(2,1fr); }
+            .upload-panel, .gallery-panel { padding-left:18px; padding-right:18px; }
+            .box-inner-divider { padding:0 18px; }
+            .name-first,.name-second { font-size:clamp(50px,14vw,80px); }
+            .hashtag { font-size:clamp(26px,7vw,36px); }
+            .invitation-message { font-size:16px; }
             .lightbox-prev, .vl-prev { left:12px; } .lightbox-next, .vl-next { right:12px; }
+            .story-card, .story-add-card, .story-placeholder-card { width:92px; height:156px; }
         }
     </style>
 </head>
 <body>
-<div class="ambient">...</div>
+<div class="ambient">
+    <svg class="p1" width="180" height="180" viewBox="0 0 180 180" fill="none"><ellipse cx="90" cy="38" rx="20" ry="40" fill="#c9a0a8" transform="rotate(0 90 90)"/><ellipse cx="90" cy="38" rx="20" ry="40" fill="#c9a0a8" transform="rotate(60 90 90)"/><ellipse cx="90" cy="38" rx="20" ry="40" fill="#c9a0a8" transform="rotate(120 90 90)"/><ellipse cx="90" cy="38" rx="20" ry="40" fill="#c9a0a8" transform="rotate(180 90 90)"/><ellipse cx="90" cy="38" rx="20" ry="40" fill="#c9a0a8" transform="rotate(240 90 90)"/><circle cx="90" cy="90" r="12" fill="#faf6f0" stroke="#c4a46b" stroke-width="1"/></svg>
+    <svg class="p2" width="110" height="110" viewBox="0 0 110 110" fill="none"><ellipse cx="55" cy="22" rx="12" ry="26" fill="#c9a0a8" transform="rotate(0 55 55)"/><ellipse cx="55" cy="22" rx="12" ry="26" fill="#c9a0a8" transform="rotate(72 55 55)"/><ellipse cx="55" cy="22" rx="12" ry="26" fill="#c9a0a8" transform="rotate(144 55 55)"/><ellipse cx="55" cy="22" rx="12" ry="26" fill="#c9a0a8" transform="rotate(216 55 55)"/><ellipse cx="55" cy="22" rx="12" ry="26" fill="#c9a0a8" transform="rotate(288 55 55)"/><circle cx="55" cy="55" r="8" fill="#faf6f0" stroke="#c4a46b" stroke-width="0.8"/></svg>
+    <svg class="p3" width="80"  height="80"  viewBox="0 0 80 80"   fill="none"><ellipse cx="40" cy="16" rx="9" ry="18" fill="#c9a0a8" transform="rotate(0 40 40)"/><ellipse cx="40" cy="16" rx="9" ry="18" fill="#c9a0a8" transform="rotate(60 40 40)"/><ellipse cx="40" cy="16" rx="9" ry="18" fill="#c9a0a8" transform="rotate(120 40 40)"/><ellipse cx="40" cy="16" rx="9" ry="18" fill="#c9a0a8" transform="rotate(180 40 40)"/><ellipse cx="40" cy="16" rx="9" ry="18" fill="#c9a0a8" transform="rotate(240 40 40)"/><circle cx="40" cy="40" r="6" fill="#faf6f0" stroke="#c4a46b" stroke-width="0.7"/></svg>
+    <svg class="p4" width="140" height="140" viewBox="0 0 140 140" fill="none"><ellipse cx="70" cy="28" rx="16" ry="34" fill="#c9a0a8" transform="rotate(0 70 70)"/><ellipse cx="70" cy="28" rx="16" ry="34" fill="#c9a0a8" transform="rotate(72 70 70)"/><ellipse cx="70" cy="28" rx="16" ry="34" fill="#c9a0a8" transform="rotate(144 70 70)"/><ellipse cx="70" cy="28" rx="16" ry="34" fill="#c9a0a8" transform="rotate(216 70 70)"/><ellipse cx="70" cy="28" rx="16" ry="34" fill="#c9a0a8" transform="rotate(288 70 70)"/><circle cx="70" cy="70" r="10" fill="#faf6f0" stroke="#c4a46b" stroke-width="1"/></svg>
+    <svg class="p5" width="70"  height="70"  viewBox="0 0 70 70"   fill="none"><ellipse cx="35" cy="13" rx="8" ry="16" fill="#c9a0a8" transform="rotate(0 35 35)"/><ellipse cx="35" cy="13" rx="8" ry="16" fill="#c9a0a8" transform="rotate(60 35 35)"/><ellipse cx="35" cy="13" rx="8" ry="16" fill="#c9a0a8" transform="rotate(120 35 35)"/><ellipse cx="35" cy="13" rx="8" ry="16" fill="#c9a0a8" transform="rotate(180 35 35)"/><ellipse cx="35" cy="13" rx="8" ry="16" fill="#c9a0a8" transform="rotate(240 35 35)"/><circle cx="35" cy="35" r="5" fill="#faf6f0" stroke="#c4a46b" stroke-width="0.6"/></svg>
+</div>
+
 <div class="page">
-    <header>...</header>
-    <p class="invitation-message">...</p>
-    <div style="text-align:center; margin-bottom:28px;"><span class="hashtag">...</span></div>
+    <header>
+        <div class="header-ornament">
+            <div class="orn-rule"></div>
+            <div class="orn-center"><svg width="6" height="6" viewBox="0 0 6 6"><rect x="1" y="1" width="4" height="4" fill="none" stroke="#c4a46b" stroke-width="0.7" transform="rotate(45 3 3)"/></svg><svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="none" stroke="#c4a46b" stroke-width="0.7"/><circle cx="5" cy="5" r="1.5" fill="#c4a46b"/></svg><svg width="6" height="6" viewBox="0 0 6 6"><rect x="1" y="1" width="4" height="4" fill="none" stroke="#c4a46b" stroke-width="0.7" transform="rotate(45 3 3)"/></svg></div>
+            <div class="orn-rule"></div>
+        </div>
+        <div class="couple-block">
+            <span class="name-first">Claudine</span>
+            <span class="name-amp">&amp;</span>
+            <span class="name-second">Mark</span>
+        </div>
+        <div class="date-tag"><span class="date-dot"></span><span class="date-text">Wedding Gallery · 2026</span><span class="date-dot"></span></div>
+    </header>
+
+    <p class="invitation-message">
+        Capture the kilig moments, tawanan, iyakan,<br>
+        and every beautiful moment with us.<br>
+        Don't forget to tag us and use our hashtag:
+    </p>
+    <div style="text-align:center; margin-bottom:28px;">
+        <span class="hashtag"><span class="ht-gold">#Forever</span><span class="ht-dark">MARK</span><span class="ht-gold">edfor</span><span class="ht-dark">CLAUD</span></span>
+    </div>
+    <p class="invitation-message">
+        Got the perfect shot? We'd love to see it.<br>
+        Upload it here ↓
+    </p>
 
     <!-- VIDEO STORIES SECTION (Facebook story layout) -->
-    <div class="video-section">
-        <div class="section-divider">...</div>
+    <div class="video-section" style="margin-top:56px;">
+        <div class="section-divider">
+            <div class="div-rule"></div><div class="div-diamond"></div><span class="div-label">Video Moments</span><div class="div-diamond"></div><div class="div-rule"></div>
+        </div>
         <div class="video-section-header">
             <div><div class="video-section-title">Moments in Motion</div><div class="video-section-sub">Swipe to watch · tap to play</div></div>
             <label for="video-file-input" class="btn-add-video-top">+ Add Video</label>
@@ -426,31 +231,73 @@
         </div>
         <div class="stories-strip" id="storiesStrip">
             <label for="video-file-input" class="story-add-card">
-                <div class="story-add-icon"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M10 5v10M5 10h10" stroke="#c4a46b" stroke-width="1.6"/></svg></div>
+                <div class="story-add-icon"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M10 5v10M5 10h10" stroke="#c4a46b" stroke-width="1.6" stroke-linecap="round"/></svg></div>
                 <span class="story-add-label">Add<br>Video</span>
             </label>
+            <!-- placeholder cards will be injected here dynamically -->
         </div>
     </div>
 
-    <!-- PHOTO UPLOAD + GALLERY (Cloudinary) -->
-    <div class="unified-box">...</div>
-    <footer>...</footer>
+    <!-- PHOTO UPLOAD & GALLERY (Cloudinary) -->
+    <div style="margin-top:52px;">
+        <div class="section-divider">
+            <div class="div-rule"></div><div class="div-diamond"></div><span class="div-label">Photos</span><div class="div-diamond"></div><div class="div-rule"></div>
+        </div>
+    </div>
+    <div class="unified-box">
+        <span class="corner-br"></span><span class="corner-bl"></span>
+        <div class="upload-panel">
+            <div class="upload-box-inner" id="uploadBoxInner">
+                <div class="upload-icon-wrap"><div class="upload-icon-bg"></div><div class="upload-icon-inner"><svg width="22" height="22" viewBox="0 0 22 22"><path d="M11 16V8M8 11l3-3 3 3" stroke="#c4a46b" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18h14" stroke="#c9a0a8" stroke-width="0.8" stroke-linecap="round"/></svg></div></div>
+                <label for="file-input" class="btn-upload">Choose Photos</label>
+                <div class="file-info">Max 20 photos · Up to 5 MB each</div>
+                <div class="preview-grid" id="previewGrid"></div>
+                <input type="file" id="file-input" multiple accept="image/*">
+            </div>
+            <div class="btn-send-wrapper" id="sendWrapper"><button class="btn-send" id="submitBtn">Send to Gallery</button></div>
+        </div>
+        <div class="box-inner-divider" style="margin-bottom:24px;">
+            <div class="box-inner-rule"></div><div class="box-inner-diamond"></div><span class="box-inner-label">Shared Memories</span><div class="box-inner-diamond"></div><div class="box-inner-rule"></div>
+        </div>
+        <div class="gallery-panel">
+            <div class="gallery-top-bar">
+                <div class="gallery-label-block"><span class="gallery-label">Photo Gallery</span><span class="gallery-sublabel">Every frame, forever</span></div>
+                <div class="gallery-actions">
+                    <button class="btn-select" id="selectModeBtn">Select</button>
+                    <button class="btn-select-all" id="selectAllBtn" style="display:none">Select All</button>
+                    <button class="btn-download" id="downloadBtn">Download</button>
+                </div>
+            </div>
+            <div class="gallery-scroll" id="galleryScroll">
+                <div class="gallery-grid" id="galleryGrid"><div class="no-photos"><div class="no-photos-inner"><div class="no-photos-icon"><svg width="20" height="20" viewBox="0 0 20 20"><rect x="1.5" y="3.5" width="17" height="13" rx="2" stroke="#c9a0a8" stroke-width="0.8"/><circle cx="7" cy="8.5" r="1.8" stroke="#c9a0a8" stroke-width="0.8"/><path d="M1.5 13.5l4.5-3.5 3.5 3.5 4-5 6 6" stroke="#c9a0a8" stroke-width="0.8" stroke-linecap="round"/></svg></div><span class="no-photos-text">No photos yet</span><span class="no-photos-sub">Be the first to share</span></div></div></div>
+            </div>
+            <div class="view-all-wrapper"><button class="btn-view-all" id="viewAllBtn">View All</button></div>
+        </div>
+    </div>
+
+    <footer>
+        <svg width="160" height="14" viewBox="0 0 160 14"><line x1="0" y1="7" x2="64" y2="7" stroke="#c4a46b" stroke-width="0.5"/><rect x="74" y="3" width="8" height="8" fill="none" stroke="#c4a46b" stroke-width="0.5" transform="rotate(45 78 7)"/><circle cx="78" cy="7" r="1.5" fill="#c4a46b"/><line x1="92" y1="7" x2="160" y2="7" stroke="#c4a46b" stroke-width="0.5"/></svg>
+    </footer>
 </div>
 
-<!-- Lightboxes -->
-<div class="lightbox" id="lightbox">...</div>
-<div class="video-lightbox" id="videoLightbox">...</div>
+<!-- Photo & Video Lightbox -->
+<div class="lightbox" id="lightbox"><button class="lightbox-close" id="lightboxClose">&times;</button><button class="lightbox-nav lightbox-prev" id="lightboxPrev">‹</button><button class="lightbox-nav lightbox-next" id="lightboxNext">›</button><div class="lightbox-img-container"><img class="lightbox-img" id="lightboxImg" src="" alt=""></div><div class="lightbox-footer"><button class="lightbox-zoom" id="lightboxZoom">Zoom</button></div></div>
+<div class="video-lightbox" id="videoLightbox"><button class="video-lightbox-close" id="videoLightboxClose">&times;</button><button class="video-lightbox-nav vl-prev" id="vlPrev">‹</button><button class="video-lightbox-nav vl-next" id="vlNext">›</button><video class="video-el" id="videoEl" controls playsinline></video></div>
 
 <script>
     (function() {
-        // ---------- Helper: Cloudinary signature ----------
-        async function getUploadSignature(resourceType = 'image') {
-            const res = await fetch('/api/upload-signature', { method: 'POST' });
+        // ---------- Cloudinary signature helper (dynamic folder) ----------
+        async function getUploadSignature(folder) {
+            const res = await fetch('/api/upload-signature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder }),
+            });
             if (!res.ok) throw new Error('Signature failed');
             return res.json();
         }
 
-        // ---------- PHOTO UPLOAD & GALLERY (unchanged except using Cloudinary) ----------
+        // ---------- PHOTO UPLOAD & GALLERY (using 'wedding_gallery' folder) ----------
         const MAX_FILES = 20, MAX_SIZE_MB = 5, MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
         const fileInput = document.getElementById('file-input');
         const previewGrid = document.getElementById('previewGrid');
@@ -462,26 +309,26 @@
         const selectAllBtn = document.getElementById('selectAllBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const viewAllBtn = document.getElementById('viewAllBtn');
-        const pendingFiles = [];
+        let pendingFiles = [];
         let galleryData = [];
 
         async function loadPhotoGallery() {
             try {
                 const res = await fetch('/api/images');
                 const images = await res.json();
-                galleryData = images.map(img => ({ id: img.id, url: img.url, name: img.id.split('/').pop() }));
+                galleryData = images.map(img => ({ id: img.public_id, url: img.secure_url, name: img.public_id?.split('/').pop() || 'photo' }));
                 renderPhotoGallery();
             } catch(e) { console.warn(e); renderPhotoGallery(); }
         }
 
         async function uploadSinglePhoto(file, signatureData) {
-            const { signature, timestamp, api_key, cloud_name } = signatureData;
+            const { signature, timestamp, api_key, cloud_name, folder } = signatureData;
             const form = new FormData();
             form.append('file', file);
             form.append('api_key', api_key);
             form.append('timestamp', timestamp);
             form.append('signature', signature);
-            form.append('folder', 'wedding_gallery');
+            form.append('folder', folder);  // 'wedding_gallery'
             const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`, { method: 'POST', body: form });
             if (!uploadRes.ok) throw new Error('Upload failed');
             const data = await uploadRes.json();
@@ -494,12 +341,12 @@
             submitBtn.disabled = true;
             for (let p of loaded) {
                 try {
-                    const sig = await getUploadSignature('image');
+                    const sig = await getUploadSignature('wedding_gallery');
                     const uploaded = await uploadSinglePhoto(p.file, sig);
                     galleryData.push(uploaded);
                 } catch(err) { alert(`Upload failed: ${p.file.name}`); break; }
             }
-            pendingFiles.length = 0;
+            pendingFiles = [];
             previewGrid.innerHTML = '';
             sendWrapper.classList.remove('visible');
             submitBtn.disabled = false;
@@ -513,7 +360,7 @@
             item.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><div style="width:18px;height:18px;border:1.5px solid #c4a46b;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;"></div></div>';
             previewGrid.appendChild(item);
             const reader = new FileReader();
-            reader.onload = e => { obj.loaded = true; item.innerHTML = `<img src="${e.target.result}"><button class="rm-preview">✕</button>`; updateSendButton(); };
+            reader.onload = e => { obj.loaded = true; item.innerHTML = `<img src="${e.target.result}" alt="preview"><button class="rm-preview">✕</button>`; updateSendButton(); };
             reader.readAsDataURL(file);
         }
 
@@ -529,7 +376,7 @@
         function renderPhotoGallery() {
             galleryGrid.innerHTML = '';
             if (!galleryData.length) {
-                galleryGrid.innerHTML = `<div class="no-photos"><div class="no-photos-inner">...</div></div>`;
+                galleryGrid.innerHTML = `<div class="no-photos"><div class="no-photos-inner"><div class="no-photos-icon"><svg width="20" height="20" viewBox="0 0 20 20"><rect x="1.5" y="3.5" width="17" height="13" rx="2" stroke="#c9a0a8" stroke-width="0.8"/><circle cx="7" cy="8.5" r="1.8" stroke="#c9a0a8" stroke-width="0.8"/><path d="M1.5 13.5l4.5-3.5 3.5 3.5 4-5 6 6" stroke="#c9a0a8" stroke-width="0.8" stroke-linecap="round"/></svg></div><span class="no-photos-text">No photos yet</span><span class="no-photos-sub">Be the first to share</span></div></div>`;
                 selectAllBtn.style.display = 'none';
                 return;
             }
@@ -548,7 +395,7 @@
         }
 
         function getSelectedItems() { return Array.from(galleryGrid.querySelectorAll('.gallery-item.selected')).map(el => galleryData[el.dataset.index]); }
-        function updateDownloadBtn() { downloadBtn.classList.toggle('visible', getSelectedItems().length > 0); selectAllBtn.textContent = (getSelectedItems().length === galleryData.length && galleryData.length) ? 'Deselect All' : 'Select All'; }
+        function updateDownloadBtn() { const s = getSelectedItems(); downloadBtn.classList.toggle('visible', s.length > 0); selectAllBtn.textContent = (s.length === galleryData.length && galleryData.length) ? 'Deselect All' : 'Select All'; }
         function updateSendButton() { sendWrapper.classList.toggle('visible', pendingFiles.some(f => f.loaded)); }
 
         fileInput.addEventListener('change', e => { if (e.target.files.length) { processPhotoFiles(e.target.files); fileInput.value = ''; } });
@@ -576,7 +423,7 @@
         lightboxZoom.addEventListener('click', () => { const z = lightboxImg.classList.toggle('zoomed'); lightboxZoom.textContent = z ? 'Zoom Out' : 'Zoom'; });
         document.addEventListener('keydown', e => { if (lightbox.classList.contains('open')) { if (e.key === 'ArrowLeft') navPhoto(-1); if (e.key === 'ArrowRight') navPhoto(1); if (e.key === 'Escape') closePhotoLightbox(); } });
 
-        // ---------- VIDEO STORIES (Cloudinary) ----------
+        // ---------- VIDEO STORIES (using Cloudinary folder 'wedding_videos') ----------
         const videoFileInput = document.getElementById('video-file-input');
         const storiesStrip = document.getElementById('storiesStrip');
         const videoLightbox = document.getElementById('videoLightbox');
@@ -591,33 +438,32 @@
 
         async function loadVideosFromCloudinary() {
             try {
-                // fetch video list from a separate endpoint (assuming /api/videos returns video resources)
-                // If not available, fallback to empty
+                // We assume there is a /api/videos endpoint that returns video resources from folder 'wedding_videos'
                 const res = await fetch('/api/videos');
-                if (!res.ok) throw new Error();
+                if (!res.ok) throw new Error('Video endpoint failed');
                 const videos = await res.json();
-                videoData = videos.map(v => ({ id: v.public_id, url: v.secure_url, name: v.public_id.split('/').pop() }));
+                videoData = videos.map(v => ({ id: v.public_id, url: v.secure_url, name: v.public_id?.split('/').pop() || 'video', duration: v.duration }));
                 renderVideoStories();
             } catch(e) {
-                console.warn('Video endpoint not found, showing empty state');
+                console.warn('Could not load videos. Showing empty placeholders.');
                 videoData = [];
                 renderVideoStories();
             }
         }
 
         async function uploadSingleVideo(file, signatureData) {
-            const { signature, timestamp, api_key, cloud_name } = signatureData;
+            const { signature, timestamp, api_key, cloud_name, folder } = signatureData;
             const form = new FormData();
             form.append('file', file);
             form.append('api_key', api_key);
             form.append('timestamp', timestamp);
             form.append('signature', signature);
-            form.append('folder', 'wedding_videos');
+            form.append('folder', folder); // 'wedding_videos'
             form.append('resource_type', 'video');
             const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/video/upload`, { method: 'POST', body: form });
             if (!uploadRes.ok) throw new Error('Video upload failed');
             const data = await uploadRes.json();
-            return { id: data.public_id, url: data.secure_url, name: data.original_filename + '.' + data.format };
+            return { id: data.public_id, url: data.secure_url, name: data.original_filename + '.' + data.format, duration: data.duration };
         }
 
         function createPlaceholderCard() {
@@ -627,24 +473,29 @@
         }
 
         function renderVideoStories() {
+            // Keep the original "Add Video" card, remove all other cards
             const addCard = storiesStrip.querySelector('.story-add-card');
             const others = storiesStrip.querySelectorAll('.story-card, .story-placeholder-card');
             others.forEach(c => c.remove());
             if (videoData.length === 0) {
+                // Show 3 placeholder cards to indicate empty slots
                 for (let i = 0; i < 3; i++) storiesStrip.appendChild(createPlaceholderCard());
                 return;
             }
             videoData.forEach((item, idx) => {
                 const card = document.createElement('div'); card.className = 'story-card';
                 const img = document.createElement('img'); img.className = 'story-video-thumb';
-                const durSpan = document.createElement('span'); durSpan.className = 'story-duration'; durSpan.textContent = '--:--';
+                const durSpan = document.createElement('span'); durSpan.className = 'story-duration';
+                durSpan.textContent = item.duration ? fmtDur(item.duration) : '--:--';
                 card.innerHTML = '<div class="story-overlay"></div><div class="story-play"></div>';
-                card.insertBefore(img, card.firstChild); card.appendChild(durSpan);
-                const videoUrl = item.url;
-                const tv = document.createElement('video'); tv.src = videoUrl; tv.muted = true; tv.preload = 'metadata'; tv.currentTime = 1; tv.style.display = 'none';
-                tv.addEventListener('loadedmetadata', () => { durSpan.textContent = fmtDur(tv.duration); });
-                tv.addEventListener('seeked', () => { const canvas = document.createElement('canvas'); canvas.width = tv.videoWidth || 108; canvas.height = tv.videoHeight || 180; canvas.getContext('2d').drawImage(tv, 0, 0); img.src = canvas.toDataURL('image/jpeg', 0.75); tv.remove(); });
-                document.body.appendChild(tv);
+                card.insertBefore(img, card.firstChild);
+                card.appendChild(durSpan);
+                // Use Cloudinary's video thumbnail API to generate a thumbnail
+                // For a direct secure_url, we can set img.src to a Cloudinary thumbnail URL
+                const cloudName = item.url.split('/')[2].split('.')[0]; // crude but works
+                const publicId = item.id;
+                img.src = `https://res.cloudinary.com/${cloudName}/video/upload/w_108,h_180,c_fill/${publicId}.jpg`;
+                img.onerror = () => { img.src = item.url; }; // fallback
                 card.addEventListener('click', () => openVideoLightbox(idx));
                 storiesStrip.appendChild(card);
             });
@@ -669,10 +520,9 @@
                 const addCard = storiesStrip.querySelector('.story-add-card');
                 addCard.insertAdjacentElement('afterend', tmpCard);
                 try {
-                    const sig = await getUploadSignature('video');
+                    const sig = await getUploadSignature('wedding_videos');
                     const uploaded = await uploadSingleVideo(file, sig);
-                    videoData.push({ id: uploaded.id, url: uploaded.url, name: uploaded.name });
-                    // Optionally notify backend (if needed) but Cloudinary already stores it
+                    videoData.push(uploaded);
                 } catch(err) { alert(`Video upload failed: ${file.name}`); }
                 finally { tmpCard.remove(); }
             }
