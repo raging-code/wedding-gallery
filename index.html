@@ -494,7 +494,7 @@
                 // For a direct secure_url, we can set img.src to a Cloudinary thumbnail URL
                 const cloudName = item.url.split('/')[2].split('.')[0]; // crude but works
                 const publicId = item.id;
-                img.src = `https://res.cloudinary.com/${cloudName}/video/upload/w_108,h_180,c_fill/${publicId}.jpg`;
+                img.src = `https://res.cloudinary.com/${dnc4znlgr}/video/upload/w_108,h_180,c_fill/${publicId}.jpg`;
                 img.onerror = () => { img.src = item.url; }; // fallback
                 card.addEventListener('click', () => openVideoLightbox(idx));
                 storiesStrip.appendChild(card);
