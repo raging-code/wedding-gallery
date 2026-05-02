@@ -31,20 +31,28 @@ export async function onRequest(context) {
     });
   }
 
-  const timestamp = Math.round(Date.now() / 1000);
-  const folder = 'wedding_gallery';
-  const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+  // Parse request body to get the desired folder
+  let folder = 'wedding_gallery'; // default for photos
+  try {
+    const body = await request.json();
+    if (body.folder) folder = body.folder;
+  } catch (e) {
+    // If no body or invalid JSON, use default folder
+  }
 
+  const timestamp = Math.round(Date.now() / 1000);
+  const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
   const signature = await sha1(paramsToSign + apiSecret);
 
-  const body = {
+  const bodyResponse = {
     signature,
     timestamp,
     api_key: apiKey,
     cloud_name: cloudName,
+    folder,          // echo back the folder so frontend knows which folder to use
   };
 
-  return new Response(JSON.stringify(body), {
+  return new Response(JSON.stringify(bodyResponse), {
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
