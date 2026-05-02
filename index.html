@@ -316,7 +316,12 @@
             try {
                 const res = await fetch('/api/images');
                 const images = await res.json();
-                galleryData = images.map(img => ({ id: img.public_id, url: img.secure_url, name: img.public_id?.split('/').pop() || 'photo' }));
+                // FIX: API returns { id: "public_id", url: "secure_url" }
+                galleryData = images.map(img => ({ 
+                    id: img.id, 
+                    url: img.url, 
+                    name: img.id?.split('/').pop() || 'photo' 
+                }));
                 renderPhotoGallery();
             } catch(e) { console.warn(e); renderPhotoGallery(); }
         }
@@ -328,7 +333,7 @@
             form.append('api_key', api_key);
             form.append('timestamp', timestamp);
             form.append('signature', signature);
-            form.append('folder', folder);  // 'wedding_gallery'
+            form.append('folder', folder);
             const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`, { method: 'POST', body: form });
             if (!uploadRes.ok) throw new Error('Upload failed');
             const data = await uploadRes.json();
@@ -438,7 +443,6 @@
 
         async function loadVideosFromCloudinary() {
             try {
-                // We assume there is a /api/videos endpoint that returns video resources from folder 'wedding_videos'
                 const res = await fetch('/api/videos');
                 if (!res.ok) throw new Error('Video endpoint failed');
                 const videos = await res.json();
@@ -458,7 +462,7 @@
             form.append('api_key', api_key);
             form.append('timestamp', timestamp);
             form.append('signature', signature);
-            form.append('folder', folder); // 'wedding_videos'
+            form.append('folder', folder);
             form.append('resource_type', 'video');
             const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/video/upload`, { method: 'POST', body: form });
             if (!uploadRes.ok) throw new Error('Video upload failed');
@@ -472,16 +476,22 @@
             return card;
         }
 
+        function getCloudNameFromUrl(url) {
+            // Extract cloud name from Cloudinary URL: https://res.cloudinary.com/YOUR_CLOUD_NAME/...
+            const match = url.match(/res\.cloudinary\.com\/([^\/]+)/);
+            return match ? match[1] : null;
+        }
+
         function renderVideoStories() {
-            // Keep the original "Add Video" card, remove all other cards
             const addCard = storiesStrip.querySelector('.story-add-card');
             const others = storiesStrip.querySelectorAll('.story-card, .story-placeholder-card');
             others.forEach(c => c.remove());
+            
             if (videoData.length === 0) {
-                // Show 3 placeholder cards to indicate empty slots
                 for (let i = 0; i < 3; i++) storiesStrip.appendChild(createPlaceholderCard());
                 return;
             }
+            
             videoData.forEach((item, idx) => {
                 const card = document.createElement('div'); card.className = 'story-card';
                 const img = document.createElement('img'); img.className = 'story-video-thumb';
@@ -490,12 +500,17 @@
                 card.innerHTML = '<div class="story-overlay"></div><div class="story-play"></div>';
                 card.insertBefore(img, card.firstChild);
                 card.appendChild(durSpan);
-                // Use Cloudinary's video thumbnail API to generate a thumbnail
-                // For a direct secure_url, we can set img.src to a Cloudinary thumbnail URL
-                const cloudName = item.url.split('/')[2].split('.')[0]; // crude but works
+                
+                // FIX: Extract cloud name dynamically from the video URL
+                const cloudName = getCloudNameFromUrl(item.url);
                 const publicId = item.id;
-                img.src = `https://res.cloudinary.com/${dnc4znlgr}/video/upload/w_108,h_180,c_fill/${publicId}.jpg`;
-                img.onerror = () => { img.src = item.url; }; // fallback
+                if (cloudName && publicId) {
+                    img.src = `https://res.cloudinary.com/${cloudName}/video/upload/w_108,h_180,c_fill/${publicId}.jpg`;
+                    img.onerror = () => { img.src = item.url; };
+                } else {
+                    img.src = item.url;
+                }
+                
                 card.addEventListener('click', () => openVideoLightbox(idx));
                 storiesStrip.appendChild(card);
             });
