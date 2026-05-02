@@ -24,7 +24,6 @@ export async function onRequest(context) {
 
   const auth = btoa(`${keyId}:${appKey}`);
   try {
-    // 1. Authorize
     const authResp = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
       headers: { Authorization: `Basic ${auth}` },
     });
@@ -33,41 +32,40 @@ export async function onRequest(context) {
     const apiUrl = authData.apiUrl;
     const authToken = authData.authorizationToken;
 
-    // 2. List files – delimiter removed (or use '/' if needed)
     const listResp = await fetch(`${apiUrl}/b2api/v2/b2_list_file_names`, {
       method: 'POST',
       headers: { Authorization: authToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        bucketId,
-        maxFileCount: 1000,
-        prefix: '',
-        // delimiter: ''   ← removed because it must be a single character
-      }),
+      body: JSON.stringify({ bucketId, maxFileCount: 1000, prefix: '' }),
     });
-
     if (!listResp.ok) {
       const errText = await listResp.text();
       throw new Error(`Listing failed: ${errText}`);
     }
 
     const listData = await listResp.json();
-    const files = listData.files || [];
-    const videos = files.map(f => {
-      const originalName = decodeURIComponent(f.fileName);
-      return {
-        id: f.fileName,
-        url: `/video/${encodeURIComponent(originalName)}`,
-        name: f.fileName,
-        size: f.contentLength,
-      };
-    });
+    const allFiles = listData.files || [];
+
+    // Build a set of known file names (to find thumbnails)
+    const fileSet = new Set(allFiles.map(f => f.fileName));
+
+    // Separate videos from thumbnails
+    const videos = allFiles
+      .filter(f => !f.fileName.endsWith('.thumb.jpg'))
+      .map(f => {
+        const originalName = decodeURIComponent(f.fileName);
+        const thumbFilename = f.fileName + '.thumb.jpg';
+        const hasThumb = fileSet.has(thumbFilename);
+        return {
+          id: f.fileName,
+          url: `/video/${encodeURIComponent(originalName)}`,
+          name: f.fileName,
+          size: f.contentLength,
+          thumbUrl: hasThumb ? `/video/${encodeURIComponent(originalName)}.thumb.jpg` : null,
+        };
+      });
 
     return new Response(JSON.stringify(videos), {
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'max-age=30',
-      },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=30' },
     });
   } catch(e) {
     return new Response(JSON.stringify({ error: e.message }), {

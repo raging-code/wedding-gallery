@@ -25,6 +25,7 @@ export async function onRequest(context) {
   }
 
   const auth = btoa(`${keyId}:${appKey}`);
+
   // 1. Authorize
   let authData;
   try {
@@ -53,19 +54,18 @@ export async function onRequest(context) {
   const uploadUrl = uploadUrlData.uploadUrl;
   const uploadAuthToken = uploadUrlData.authorizationToken;
 
-  // 3. Read the uploaded file
+  // 3. Parse multipart form data
   const formData = await request.formData();
   const file = formData.get('file');
-  if (!file) return new Response('No file provided', { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } });
+  if (!file) return new Response('No video file provided', { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } });
+
+  const thumbFile = formData.get('thumb');   // thumbnail (optional)
 
   const fileBuffer = await file.arrayBuffer();
-  
-  // Keep the original un-encoded name for later use
   const originalName = `${crypto.randomUUID()}-${file.name}`;
-  // Encode only for the B2 upload header
   const encodedName = encodeURIComponent(originalName);
 
-  // 4. Upload
+  // 4. Upload video
   try {
     const uploadResp = await fetch(uploadUrl, {
       method: 'POST',
@@ -79,17 +79,62 @@ export async function onRequest(context) {
     });
     if (!uploadResp.ok) {
       const err = await uploadResp.text();
-      return new Response(`Upload failed: ${err}`, { status: 500 });
+      return new Response(`Video upload failed: ${err}`, { status: 500 });
     }
-    const result = await uploadResp.json();
+    const videoResult = await uploadResp.json();
 
-    // Build the proxy URL using the ORIGINAL name (will be single-encoded)
+    // 5. Upload thumbnail if present
+    let thumbUrl = null;
+    if (thumbFile) {
+      const thumbBuffer = await thumbFile.arrayBuffer();
+      const thumbName = originalName + '.thumb.jpg';
+      const encodedThumbName = encodeURIComponent(thumbName);
+
+      // Get a new upload URL (each is one-use)
+      let thumbUploadUrlData;
+      try {
+        const urlResp = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
+          method: 'POST',
+          headers: { Authorization: authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bucketId }),
+        });
+        if (!urlResp.ok) throw new Error('Thumbnail upload URL error');
+        thumbUploadUrlData = await urlResp.json();
+      } catch(e) {
+        // If thumbnail fails, we still return video success
+        return new Response(JSON.stringify({
+          id: videoResult.fileName,
+          url: `/video/${encodeURIComponent(originalName)}`,
+          name: videoResult.fileName,
+          thumbUrl: null,
+        }), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+
+      const thumbUploadResp = await fetch(thumbUploadUrlData.uploadUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: thumbUploadUrlData.authorizationToken,
+          'X-Bz-File-Name': encodedThumbName,
+          'Content-Type': 'image/jpeg',
+          'X-Bz-Content-Sha1': 'do_not_verify',
+        },
+        body: thumbBuffer,
+      });
+      if (thumbUploadResp.ok) {
+        thumbUrl = `/video/${encodeURIComponent(originalName)}.thumb.jpg`;
+      }
+    }
+
     return new Response(JSON.stringify({
-      id: result.fileName,
-      url: `/video/${encodeURIComponent(originalName)}`,   // no double encoding!
-      name: result.fileName,
+      id: videoResult.fileName,
+      url: `/video/${encodeURIComponent(originalName)}`,
+      name: videoResult.fileName,
+      thumbUrl: thumbUrl,   // may be null
     }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
+
   } catch(e) { return new Response('Upload error', { status: 500 }); }
 }
