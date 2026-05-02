@@ -134,6 +134,14 @@
         .btn-select.active { background:var(--rose-deep); color:white; border-color:var(--rose-deep); }
         .btn-download { display:none; background:var(--ink); color:var(--ivory); border-color:var(--ink); }
         .btn-download.visible { display:inline-block; }
+        
+        /* Hide selection buttons on mobile (as requested) */
+        @media (max-width: 768px) {
+            .gallery-actions {
+                display: none !important;
+            }
+        }
+        
         .gallery-scroll { overflow-y:auto; max-height:540px; padding-right:2px; transition: scroll-behavior 0.3s ease; }
         .gallery-scroll.expanded { max-height:none; overflow-y:visible; }
         .gallery-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
@@ -413,15 +421,14 @@
         selectAllBtn.addEventListener('click', () => { if (!galleryGrid.classList.contains('selection-mode')) { alert('Press "Select" first.'); return; } const all = galleryGrid.querySelectorAll('.gallery-item'); const allSelected = getSelectedItems().length === galleryData.length; all.forEach(el => el.classList.toggle('selected', !allSelected)); updateDownloadBtn(); });
         downloadBtn.addEventListener('click', () => { getSelectedItems().forEach((item, i) => setTimeout(() => { const a = document.createElement('a'); a.href = item.url; a.download = item.name; a.click(); }, i * 200)); });
         
-        // FIX: When "View All" is clicked, scroll to top of gallery
+        // FIX: When "View All" is clicked, scroll to top of gallery smoothly
         viewAllBtn.addEventListener('click', () => {
             const exp = galleryScroll.classList.toggle('expanded');
             galleryGrid.classList.toggle('show-all', exp);
             viewAllBtn.textContent = exp ? 'Show Less' : 'View All';
             if (exp) {
-                // Scroll to top smoothly after a tiny delay to allow DOM to update
                 setTimeout(() => {
-                    galleryScroll.scrollTop = 0;
+                    galleryScroll.scrollTo({ top: 0, behavior: 'smooth' });
                 }, 50);
             }
         });
@@ -548,32 +555,45 @@
         vlPrev.addEventListener('click', () => navigateVideo(-1));
         vlNext.addEventListener('click', () => navigateVideo(1));
         
-        // Add swipe gesture for video lightbox
-        let videoTouchStartX = 0;
-        let videoTouchStartY = 0;
-        const VIDEO_SWIPE_THRESHOLD = 50;
+        // Improved swipe gesture for video lightbox (no cancelable touchend)
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isSwiping = false;
+        const SWIPE_THRESHOLD = 50;
         
-        const videoLightboxElem = document.getElementById('videoLightbox');
-        videoLightboxElem.addEventListener('touchstart', (e) => {
-            videoTouchStartX = e.changedTouches[0].screenX;
-            videoTouchStartY = e.changedTouches[0].screenY;
+        videoLightbox.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            isSwiping = false;
         }, { passive: true });
         
-        videoLightboxElem.addEventListener('touchend', (e) => {
-            const touchEndX = e.changedTouches[0].screenX;
-            const touchEndY = e.changedTouches[0].screenY;
-            const dx = touchEndX - videoTouchStartX;
-            const dy = touchEndY - videoTouchStartY;
-            
-            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > VIDEO_SWIPE_THRESHOLD) {
-                e.preventDefault();
-                if (dx > 0) {
+        videoLightbox.addEventListener('touchmove', (e) => {
+            if (!touchStartX) return;
+            const deltaX = e.touches[0].clientX - touchStartX;
+            const deltaY = e.touches[0].clientY - touchStartY;
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+                isSwiping = true;
+                e.preventDefault(); // prevent vertical scroll when swiping horizontally
+            }
+        }, { passive: false });
+        
+        videoLightbox.addEventListener('touchend', (e) => {
+            if (!touchStartX || !isSwiping) {
+                touchStartX = 0;
+                return;
+            }
+            const endX = e.changedTouches[0].clientX;
+            const deltaX = endX - touchStartX;
+            if (Math.abs(deltaX) > SWIPE_THRESHOLD) {
+                if (deltaX > 0) {
                     navigateVideo(-1); // swipe right -> previous
                 } else {
                     navigateVideo(1); // swipe left -> next
                 }
             }
-        }, { passive: false });
+            touchStartX = 0;
+            isSwiping = false;
+        });
         
         document.addEventListener('keydown', e => { 
             if (videoLightbox.classList.contains('open')) { 
