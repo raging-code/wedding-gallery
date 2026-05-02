@@ -1,7 +1,6 @@
 export async function onRequest(context) {
-  const { request, env } = context;
-
-  if (request.method === 'OPTIONS') {
+  const { env } = context;
+  if (context.request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
         'Access-Control-Allow-Origin': '*',
@@ -11,43 +10,51 @@ export async function onRequest(context) {
     });
   }
 
-  const cloudName = env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = env.CLOUDINARY_API_KEY;
-  const apiSecret = env.CLOUDINARY_API_SECRET;
+  const keyId = env.B2_KEY_ID;
+  const appKey = env.B2_APPLICATION_KEY;
+  const bucketId = env.B2_BUCKET_ID;
+  const bucketName = env.B2_BUCKET_NAME;
 
-  if (!cloudName || !apiKey || !apiSecret) {
+  if (!keyId || !appKey || !bucketId || !bucketName) {
     return new Response(JSON.stringify([]), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
 
-  const auth = base64Encode(`${apiKey}:${apiSecret}`);
-  const url = `https://api.cloudinary.com/v1_1/${cloudName}/resources/video?type=upload&prefix=wedding_videos/&max_results=500`;
-
+  const auth = btoa(`${keyId}:${appKey}`);
   try {
-    const response = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
-    if (!response.ok) throw new Error('Cloudinary video fetch failed');
-    const data = await response.json();
-    const videos = (data.resources || []).map(r => ({
-      public_id: r.public_id,
-      secure_url: r.secure_url,
-      format: r.format,
-      duration: r.duration,
+    // Authorize with B2
+    const authResp = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+      headers: { Authorization: `Basic ${auth}` },
+    });
+    if (!authResp.ok) throw new Error('B2 auth failed');
+    const authData = await authResp.json();
+    const apiUrl = authData.apiUrl;
+    const authToken = authData.authorizationToken;
+
+    // List files
+    const listResp = await fetch(`${apiUrl}/b2api/v2/b2_list_file_names`, {
+      method: 'POST',
+      headers: { Authorization: authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bucketId, maxFileCount: 1000, prefix: '', delimiter: '' }),
+    });
+    if (!listResp.ok) throw new Error('Listing failed');
+    const listData = await listResp.json();
+
+    const files = listData.files || [];
+    const videos = files.map(f => ({
+      id: f.fileName,
+      url: `/video/${encodeURIComponent(f.fileName)}`,   // proxy route
+      name: f.fileName,
+      size: f.contentLength,
     }));
+
     return new Response(JSON.stringify(videos), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=30' },
     });
-  } catch (e) {
+  } catch(e) {
     return new Response(JSON.stringify([]), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
-}
-
-function base64Encode(str) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(str);
-  let binary = '';
-  data.forEach(byte => (binary += String.fromCharCode(byte)));
-  return btoa(binary);
 }
