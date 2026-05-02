@@ -22,14 +22,13 @@ export async function onRequest(context) {
   }
 
   const auth = base64Encode(`${apiKey}:${apiSecret}`);
-  // List video resources from the 'wedding_videos' folder
   const url = `https://api.cloudinary.com/v1_1/${cloudName}/resources/video?type=upload&prefix=wedding_videos/&max_results=500`;
 
   try {
     const response = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
     if (!response.ok) throw new Error('Cloudinary video fetch failed');
     const data = await response.json();
-    const videos = data.resources.map(r => ({
+    const videos = (data.resources || []).map(r => ({
       public_id: r.public_id,
       secure_url: r.secure_url,
       format: r.format,
