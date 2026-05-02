@@ -59,7 +59,11 @@ export async function onRequest(context) {
   if (!file) return new Response('No file provided', { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } });
 
   const fileBuffer = await file.arrayBuffer();
-  const uniqueName = `${crypto.randomUUID()}-${file.name}`;
+  
+  // Keep the original un-encoded name for later use
+  const originalName = `${crypto.randomUUID()}-${file.name}`;
+  // Encode only for the B2 upload header
+  const encodedName = encodeURIComponent(originalName);
 
   // 4. Upload
   try {
@@ -67,7 +71,7 @@ export async function onRequest(context) {
       method: 'POST',
       headers: {
         Authorization: uploadAuthToken,
-        'X-Bz-File-Name': encodeURIComponent(uniqueName),
+        'X-Bz-File-Name': encodedName,
         'Content-Type': file.type || 'application/octet-stream',
         'X-Bz-Content-Sha1': 'do_not_verify',
       },
@@ -79,9 +83,10 @@ export async function onRequest(context) {
     }
     const result = await uploadResp.json();
 
+    // Build the proxy URL using the ORIGINAL name (will be single-encoded)
     return new Response(JSON.stringify({
       id: result.fileName,
-      url: `/video/${encodeURIComponent(result.fileName)}`,
+      url: `/video/${encodeURIComponent(originalName)}`,   // no double encoding!
       name: result.fileName,
     }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
