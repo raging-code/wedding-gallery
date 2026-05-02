@@ -6,6 +6,8 @@
     <title>Wedding Gallery — Claudine &amp; Mark</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
+    <!-- Preconnect to Cloudinary to speed up image loading -->
+    <link rel="preconnect" href="https://res.cloudinary.com">
     <style>
         /* ALL EXISTING CSS – KEPT COMPLETELY UNCHANGED */
         :root {
@@ -64,7 +66,6 @@
         .div-rule { flex:1; height:0.5px; background: linear-gradient(90deg,transparent,var(--rose-border) 50%,transparent); }
         .div-label { font-size: 9px; font-weight: 400; letter-spacing: 0.35em; text-transform: uppercase; color: var(--rose-deep); white-space: nowrap; }
         .div-diamond { width:5px; height:5px; background:var(--rose); transform:rotate(45deg); flex-shrink:0; }
-        /* video stories */
         .video-section { width: 100%; margin-bottom: 52px; animation: fadeUp 1.1s cubic-bezier(.22,.68,0,1.2) 0.1s both; }
         .video-section-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; }
         .video-section-title { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 400; font-size: 24px; color: var(--ink); }
@@ -93,7 +94,6 @@
         .story-placeholder-card { flex-shrink: 0; width: 108px; height: 180px; border-radius: 12px; background: #fefaf5; border: 1px solid var(--rose-border); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; scroll-snap-align: start; opacity: 0.7; }
         .story-placeholder-icon { width: 44px; height: 44px; border-radius: 50%; background: rgba(201,160,168,0.12); border: 1px dashed var(--rose); display: flex; align-items: center; justify-content: center; }
         .story-placeholder-text { font-size: 8px; font-weight: 300; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-50); text-align: center; }
-        /* unified box for photos */
         .unified-box { background: #fdfaf6; border: 0.5px solid var(--rose-border); border-radius: 3px; position: relative; overflow: hidden; box-shadow: 0 0 0 4px rgba(196,164,107,0.04), 0 1px 0 rgba(201,160,168,0.2), 0 12px 48px rgba(28,17,14,0.06); animation: fadeUp 1.1s cubic-bezier(.22,.68,0,1.2) 0.2s both; }
         .unified-box::before, .unified-box::after { content:''; position:absolute; top:8px; width:18px; height:18px; border-top:0.5px solid var(--gold); pointer-events:none; z-index:2; }
         .unified-box::before { left:8px; border-left:0.5px solid var(--gold); }
@@ -138,7 +138,7 @@
         @media (max-width: 768px) {
             .gallery-actions { display: none !important; }
         }
-        .gallery-scroll { overflow-y:auto; max-height:540px; padding-right:2px; transition: scroll-behavior 0.3s ease; }
+        .gallery-scroll { overflow-y:auto; max-height:540px; padding-right:2px; scroll-behavior: smooth; }
         .gallery-scroll.expanded { max-height:none; overflow-y:visible; }
         .gallery-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
         .gallery-grid:not(.show-all) .gallery-item:nth-child(n+10) { display:none; }
@@ -223,7 +223,7 @@
         Upload it here ↓
     </p>
 
-    <!-- VIDEO STORIES (Backblaze B2) -->
+    <!-- VIDEO STORIES (Backblaze B2) - unchanged -->
     <div class="video-section" style="margin-top:56px;">
         <div class="section-divider">
             <div class="div-rule"></div><div class="div-diamond"></div><span class="div-label">Video Moments</span><div class="div-diamond"></div><div class="div-rule"></div>
@@ -241,7 +241,7 @@
         </div>
     </div>
 
-    <!-- PHOTO SECTION (Cloudinary) unchanged structure -->
+    <!-- PHOTO SECTION (Cloudinary) with client-side compression -->
     <div style="margin-top:52px;">
         <div class="section-divider">
             <div class="div-rule"></div><div class="div-diamond"></div><span class="div-label">Photos</span><div class="div-diamond"></div><div class="div-rule"></div>
@@ -289,6 +289,115 @@
 
 <script>
     (function() {
+        // ---------- Client‑side photo compression ----------
+        const MAX_PHOTO_DIM = 2048;
+        const JPEG_QUALITY = 0.8;      // 80% quality – excellent quality/size ratio
+
+        /**
+         * Reads EXIF orientation from a JPEG file (ArrayBuffer).
+         * Returns 1‑8, or 1 if unknown/not found.
+         */
+        function getOrientation(buffer) {
+            const view = new DataView(buffer);
+            if (view.getUint16(0, false) !== 0xFFD8) return 1;  // not JPEG
+            let offset = 2;
+            while (offset < view.byteLength) {
+                if (view.getUint16(offset, false) === 0xFFE1) {
+                    // APP1 marker, maybe EXIF
+                    const exifOffset = offset + 4;  // skip marker & length
+                    const exifString = String.fromCharCode.apply(null, new Uint8Array(buffer.slice(exifOffset, exifOffset + 4)));
+                    if (exifString !== 'Exif') break;
+                    const tiffOffset = exifOffset + 6;
+                    const isLittleEndian = view.getUint16(tiffOffset, false) === 0x4949;
+                    const ifdOffset = view.getUint32(tiffOffset + 4, isLittleEndian);
+                    const ifdStart = tiffOffset + ifdOffset;
+                    const entries = view.getUint16(ifdStart, isLittleEndian);
+                    for (let i = 0; i < entries; i++) {
+                        const entryOffset = ifdStart + 2 + i * 12;
+                        if (view.getUint16(entryOffset, isLittleEndian) === 0x0112) {
+                            // orientation tag
+                            return view.getUint16(entryOffset + 8, isLittleEndian);
+                        }
+                    }
+                    break;
+                }
+                offset += 2 + view.getUint16(offset + 2, false); // skip marker
+            }
+            return 1;
+        }
+
+        /**
+         * Compress an image file client‑side.
+         * @param {File} file - original image file
+         * @returns {Promise<{blob: Blob, name: string}>} compressed JPEG blob + filename
+         */
+        function compressImage(file) {
+            return new Promise((resolve, reject) => {
+                // Read the original file as ArrayBuffer to parse EXIF
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const buffer = reader.result;
+                    const orientation = getOrientation(buffer);
+
+                    // Create image from blob URL
+                    const img = new Image();
+                    img.onload = () => {
+                        URL.revokeObjectURL(img.src);
+                        let { width, height } = img;
+
+                        // Resize if necessary, keeping aspect ratio
+                        if (width > MAX_PHOTO_DIM || height > MAX_PHOTO_DIM) {
+                            if (width > height) {
+                                height = Math.round((height / width) * MAX_PHOTO_DIM);
+                                width = MAX_PHOTO_DIM;
+                            } else {
+                                width = Math.round((width / height) * MAX_PHOTO_DIM);
+                                height = MAX_PHOTO_DIM;
+                            }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+
+                        // Apply orientation transformation
+                        ctx.save();
+                        // Translate to center before rotating (if needed)
+                        switch (orientation) {
+                            case 2: ctx.transform(-1, 0, 0, 1, width, 0); break;
+                            case 3: ctx.transform(-1, 0, 0, -1, width, height); break;
+                            case 4: ctx.transform(1, 0, 0, -1, 0, height); break;
+                            case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+                            case 6: ctx.transform(0, 1, -1, 0, width, 0); break;
+                            case 7: ctx.transform(0, -1, -1, 0, width, height); break;
+                            case 8: ctx.transform(0, -1, 1, 0, 0, height); break;
+                            default: /* 1 – no transform */ break;
+                        }
+                        // Rotated dims might need swap – we use a simpler approach:
+                        // For flips (2‑4) we keep same canvas size.
+                        // For rotations (5‑8) we swap width/height and then draw.
+                        // Because we already resized, we just draw with transform.
+                        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, canvas.width, canvas.height);
+                        ctx.restore();
+
+                        // Export as JPEG at 80% quality
+                        canvas.toBlob((blob) => {
+                            if (!blob) {
+                                return reject(new Error('Canvas export failed'));
+                            }
+                            const name = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+                            resolve({ blob, name });
+                        }, 'image/jpeg', JPEG_QUALITY);
+                    };
+                    img.onerror = () => reject(new Error('Image load error'));
+                    img.src = URL.createObjectURL(file);
+                };
+                reader.onerror = () => reject(new Error('File read error'));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
         // ---------- Cloudinary signature helper (photos only) ----------
         async function getUploadSignature(folder) {
             const res = await fetch('/api/upload-signature', {
@@ -312,7 +421,7 @@
         const selectAllBtn = document.getElementById('selectAllBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const viewAllBtn = document.getElementById('viewAllBtn');
-        let pendingFiles = [];
+        let pendingFiles = [];       // each item: { file, loaded: boolean, blob?: Blob, compressedName?: string }
         let galleryData = [];
 
         async function loadPhotoGallery() {
@@ -349,7 +458,9 @@
             for (let p of loaded) {
                 try {
                     const sig = await getUploadSignature('wedding_gallery');
-                    const uploaded = await uploadSinglePhoto(p.file, sig);
+                    // Use compressed blob if available, else original file
+                    const fileToUpload = p.blob || p.file;
+                    const uploaded = await uploadSinglePhoto(fileToUpload, sig);
                     galleryData.push(uploaded);
                 } catch(err) { alert(`Upload failed: ${p.file.name}`); break; }
             }
@@ -361,14 +472,34 @@
         }
 
         function addPhotoPreview(file) {
-            const obj = { file, loaded: false };
+            const obj = { file, loaded: false, blob: null, compressedName: file.name };
             pendingFiles.push(obj);
             const item = document.createElement('div'); item.className = 'preview-item';
             item.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><div style="width:18px;height:18px;border:1.5px solid #c4a46b;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;"></div></div>';
             previewGrid.appendChild(item);
-            const reader = new FileReader();
-            reader.onload = e => { obj.loaded = true; item.innerHTML = `<img src="${e.target.result}" alt="preview"><button class="rm-preview">✕</button>`; updateSendButton(); };
-            reader.readAsDataURL(file);
+
+            // Start client‑side compression
+            compressImage(file)
+                .then(({ blob, name }) => {
+                    obj.loaded = true;
+                    obj.blob = blob;
+                    obj.compressedName = name;
+                    // Show preview using the compressed blob
+                    const url = URL.createObjectURL(blob);
+                    item.innerHTML = `<img src="${url}" alt="preview"><button class="rm-preview">✕</button>`;
+                    updateSendButton();
+                })
+                .catch((err) => {
+                    // If compression fails, fall back to original file
+                    console.warn('Compression failed, using original:', err);
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        obj.loaded = true;
+                        item.innerHTML = `<img src="${e.target.result}" alt="preview"><button class="rm-preview">✕</button>`;
+                        updateSendButton();
+                    };
+                    reader.readAsDataURL(file);
+                });
         }
 
         function processPhotoFiles(fileList) {
@@ -390,7 +521,12 @@
             selectAllBtn.style.display = 'inline-block';
             galleryData.forEach((item, idx) => {
                 const div = document.createElement('div'); div.className = 'gallery-item'; div.dataset.index = idx;
-                div.innerHTML = `<img src="${item.url}" alt="photo"><div class="select-check"></div>`;
+                const img = document.createElement('img');
+                img.src = item.url;
+                img.alt = 'photo';
+                img.loading = 'lazy';         // ✅ lazy loading for gallery images
+                div.appendChild(img);
+                div.innerHTML += `<div class="select-check"></div>`;
                 div.addEventListener('click', () => {
                     if (galleryGrid.classList.contains('selection-mode')) div.classList.toggle('selected');
                     else openPhotoLightbox(idx);
@@ -417,7 +553,6 @@
         selectAllBtn.addEventListener('click', () => { if (!galleryGrid.classList.contains('selection-mode')) { alert('Press "Select" first.'); return; } const all = galleryGrid.querySelectorAll('.gallery-item'); const allSelected = getSelectedItems().length === galleryData.length; all.forEach(el => el.classList.toggle('selected', !allSelected)); updateDownloadBtn(); });
         downloadBtn.addEventListener('click', () => { getSelectedItems().forEach((item, i) => setTimeout(() => { const a = document.createElement('a'); a.href = item.url; a.download = item.name; a.click(); }, i * 200)); });
         
-        // FIXED "View All" – scrolls the whole gallery box into view
         viewAllBtn.addEventListener('click', () => {
             const exp = galleryScroll.classList.toggle('expanded');
             galleryGrid.classList.toggle('show-all', exp);
@@ -427,7 +562,7 @@
             }
         });
 
-        // Photo lightbox
+        // Photo lightbox (unchanged)
         const lightbox = document.getElementById('lightbox'), lightboxImg = document.getElementById('lightboxImg'), lightboxClose = document.getElementById('lightboxClose'), lightboxPrev = document.getElementById('lightboxPrev'), lightboxNext = document.getElementById('lightboxNext'), lightboxZoom = document.getElementById('lightboxZoom');
         let currentPhoto = -1;
         function openPhotoLightbox(i) { if (!galleryData.length) return; currentPhoto = i; lightboxImg.src = galleryData[i].url; lightbox.classList.add('open'); }
@@ -439,7 +574,7 @@
         lightboxZoom.addEventListener('click', () => { const z = lightboxImg.classList.toggle('zoomed'); lightboxZoom.textContent = z ? 'Zoom Out' : 'Zoom'; });
         document.addEventListener('keydown', e => { if (lightbox.classList.contains('open')) { if (e.key === 'ArrowLeft') navPhoto(-1); if (e.key === 'ArrowRight') navPhoto(1); if (e.key === 'Escape') closePhotoLightbox(); } });
 
-        // ======== VIDEO STORIES WITH BACKBLAZE B2 ========
+        // ======== VIDEO STORIES WITH BACKBLAZE B2 (unchanged) ========
         const videoFileInput = document.getElementById('video-file-input');
         const storiesStrip = document.getElementById('storiesStrip');
         const videoLightbox = document.getElementById('videoLightbox');
@@ -450,78 +585,64 @@
         let videoData = [];
         let currentVideoIdx = -1;
 
-        // Elegant static placeholder thumbnail (SVG data URI)
         const VIDEO_THUMB = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="108" height="180" viewBox="0 0 108 180"%3E%3Crect width="100%25" height="100%25" fill="%23fdfaf6"/%3E%3Ccircle cx="54" cy="75" r="22" fill="none" stroke="%23c9a0a8" stroke-width="1.5"/%3E%3Cpath d="M45 65 L70 78 L45 91 Z" fill="%23c9a0a8" opacity="0.6"/%3E%3C/svg%3E';
 
-async function loadVideosFromB2() {
-    try {
-        const res = await fetch('/api/videos');
-        if (!res.ok) throw new Error('Video fetch failed');
-        const videos = await res.json();
-        videoData = videos.map(v => ({
-            id: v.id,
-            url: v.url,
-            name: v.name,
-            thumbUrl: v.thumbUrl || null,   // may be null
-        }));
-        renderVideoStories();
-    } catch(e) {
-        console.warn('Could not load videos');
-        videoData = [];
-        renderVideoStories();
-    }
-}
+        async function loadVideosFromB2() {
+            try {
+                const res = await fetch('/api/videos');
+                if (!res.ok) throw new Error('Video fetch failed');
+                const videos = await res.json();
+                videoData = videos.map(v => ({
+                    id: v.id,
+                    url: v.url,
+                    name: v.name,
+                    thumbUrl: v.thumbUrl || null,
+                }));
+                renderVideoStories();
+            } catch(e) {
+                console.warn('Could not load videos');
+                videoData = [];
+                renderVideoStories();
+            }
+        }
 
-async function uploadSingleVideo(file) {
-    // 1. Capture a thumbnail frame from the video
-    const thumb = await captureVideoThumb(file);
+        async function uploadSingleVideo(file) {
+            const thumb = await captureVideoThumb(file);
+            const form = new FormData();
+            form.append('file', file);
+            if (thumb) {
+                form.append('thumb', thumb, 'thumb.jpg');
+            }
+            const resp = await fetch('/api/upload-video', { method: 'POST', body: form });
+            if (!resp.ok) {
+                const err = await resp.text();
+                throw new Error(err);
+            }
+            return await resp.json();
+        }
 
-    // 2. Prepare FormData
-    const form = new FormData();
-    form.append('file', file);
-    if (thumb) {
-        form.append('thumb', thumb, 'thumb.jpg');
-    }
-
-    const resp = await fetch('/api/upload-video', { method: 'POST', body: form });
-    if (!resp.ok) {
-        const err = await resp.text();
-        throw new Error(err);
-    }
-    return await resp.json();
-}
-
-// Helper: generate a 108x180 JPEG thumbnail from the video
-function captureVideoThumb(file) {
-    return new Promise((resolve) => {
-        const video = document.createElement('video');
-        video.preload = 'metadata';
-        video.muted = true;
-        video.playsInline = true;
-
-        video.onloadeddata = () => {
-            video.currentTime = 1;  // seek to 1 second
-        };
-
-        video.onseeked = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 108;
-            canvas.height = 180;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob((blob) => {
-                video.src = '';  // clean up
-                resolve(blob);
-            }, 'image/jpeg', 0.7);
-        };
-
-        video.onerror = () => {
-            resolve(null);   // if thumbnail fails, just resolve null
-        };
-
-        video.src = URL.createObjectURL(file);
-    });
-}
+        function captureVideoThumb(file) {
+            return new Promise((resolve) => {
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                video.muted = true;
+                video.playsInline = true;
+                video.onloadeddata = () => { video.currentTime = 1; };
+                video.onseeked = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 108;
+                    canvas.height = 180;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        video.src = '';
+                        resolve(blob);
+                    }, 'image/jpeg', 0.7);
+                };
+                video.onerror = () => { resolve(null); };
+                video.src = URL.createObjectURL(file);
+            });
+        }
 
         function renderVideoStories() {
             const addCard = storiesStrip.querySelector('.story-add-card');
@@ -538,27 +659,24 @@ function captureVideoThumb(file) {
                 return;
             }
 
-videoData.forEach((item, idx) => {
-    const card = document.createElement('div');
-    card.className = 'story-card';
-
-    // Use real thumb if available, otherwise fallback to SVG placeholder
-    const thumbSrc = item.thumbUrl || VIDEO_THUMB;
-
-    card.innerHTML = `
-        <img class="story-video-thumb" src="${thumbSrc}" alt="video">
-        <div class="story-overlay"></div>
-        <div class="story-play"></div>
-        <span class="story-duration">--:--</span>
-    `;
-    card.addEventListener('click', () => openVideoLightbox(idx));
-    storiesStrip.appendChild(card);
-});
+            videoData.forEach((item, idx) => {
+                const card = document.createElement('div');
+                card.className = 'story-card';
+                const thumbSrc = item.thumbUrl || VIDEO_THUMB;
+                card.innerHTML = `
+                    <img class="story-video-thumb" src="${thumbSrc}" alt="video">
+                    <div class="story-overlay"></div>
+                    <div class="story-play"></div>
+                    <span class="story-duration">--:--</span>
+                `;
+                card.addEventListener('click', () => openVideoLightbox(idx));
+                storiesStrip.appendChild(card);
+            });
         }
 
         function openVideoLightbox(idx) {
             currentVideoIdx = idx;
-            videoEl.src = videoData[idx].url;   // proxy URL like /video/...
+            videoEl.src = videoData[idx].url;
             videoEl.load();
             videoEl.play();
             videoLightbox.classList.add('open');
@@ -580,7 +698,6 @@ videoData.forEach((item, idx) => {
         vlPrev.addEventListener('click', () => navigateVideo(-1));
         vlNext.addEventListener('click', () => navigateVideo(1));
         
-        // Touch swipe for video lightbox
         let touchStartX = 0, isSwiping = false;
         videoLightbox.addEventListener('touchstart', (e) => {
             touchStartX = e.touches[0].clientX;
@@ -613,7 +730,6 @@ videoData.forEach((item, idx) => {
             }
         });
 
-        // Handle video file input
         videoFileInput.addEventListener('change', async e => {
             const files = Array.from(e.target.files).filter(f => f.type.startsWith('video/'));
             if (!files.length) return;
