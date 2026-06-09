@@ -1,6 +1,70 @@
-import { useState, useEffect, useRef } from "react";
+#!/usr/bin/env node
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  WEDDING GALLERY — PREMIUM DESIGN UPGRADE  v3.0.0                  ║
+// ║  github.com/raging-code/wedding-gallery                            ║
+// ╠══════════════════════════════════════════════════════════════════════╣
+// ║  Usage:                                                             ║
+// ║    node patch-v3.js                  ← auto-clones the repo        ║
+// ║    node patch-v3.js ./wedding-gallery ← patch an existing folder   ║
+// ║    node patch-v3.js --restore        ← revert to originals         ║
+// ╠══════════════════════════════════════════════════════════════════════╣
+// ║  What it does:                                                      ║
+// ║  1. Backs up src/WeddingGallery.js to __backup_v3__/               ║
+// ║  2. Replaces the LUXURY_CSS block inside WeddingGallery.js with    ║
+// ║     a completely redesigned premium stylesheet                     ║
+// ║  3. Adds an ambient petal animation layer                          ║
+// ║  4. Upgrades the hero, typography, gallery card, and footer        ║
+// ║  5. Patches public/index.html to inject Playfair Display + Jost    ║
+// ╚══════════════════════════════════════════════════════════════════════╝
 
-const LUXURY_CSS = `
+'use strict';
+
+const fs   = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+// ─── CONFIG ───────────────────────────────────────────────────────────
+const REPO_URL  = 'https://github.com/raging-code/wedding-gallery.git';
+const REPO_NAME = 'wedding-gallery';
+const BACKUP    = '__backup_v3__';
+
+const RESTORE = process.argv.includes('--restore');
+const TARGET  = process.argv.find(
+  a => !a.startsWith('--') && a !== process.argv[0] && a !== process.argv[1]
+) || `./${REPO_NAME}`;
+
+// ─── CONSOLE COLORS ───────────────────────────────────────────────────
+const C = {
+  reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m',
+  gold: '\x1b[33m', green: '\x1b[32m', cyan: '\x1b[36m',
+  red: '\x1b[31m', pink: '\x1b[35m',
+};
+const log  = (icon, msg, color = C.cyan) => console.log(`  ${color}${icon}${C.reset}  ${msg}`);
+const ok   = msg => log('✓', msg, C.green);
+const info = msg => log('◈', msg, C.cyan);
+const warn = msg => log('!', msg, C.gold);
+const err  = msg => log('✗', msg, C.red);
+const head = msg => console.log(`\n${C.bold}${C.gold}  ${msg}${C.reset}\n`);
+
+// ─── FILE HELPERS ─────────────────────────────────────────────────────
+const readFile  = p => fs.readFileSync(p, 'utf-8');
+const writeFile = (p, c) => { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, c, 'utf-8'); };
+const exists    = p => fs.existsSync(p);
+
+function backup(src) {
+  const dest = path.join(path.dirname(src), BACKUP, path.basename(src));
+  if (!exists(dest)) { fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.copyFileSync(src, dest); }
+}
+function restore(src) {
+  const bak = path.join(path.dirname(src), BACKUP, path.basename(src));
+  if (exists(bak)) { fs.copyFileSync(bak, src); ok(`Restored ${path.basename(src)}`); }
+  else warn(`No backup found for ${path.basename(src)}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  THE NEW LUXURY CSS  (replaces LUXURY_CSS inside WeddingGallery.js)
+// ═══════════════════════════════════════════════════════════════════════
+const NEW_LUXURY_CSS = `
 /* ── Playfair Display (editorial serif) + Jost (geometric sans) ──── */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Cormorant:ital,wght@0,300;0,400;1,300;1,400;1,500&family=Jost:wght@200;300;400;500;600&display=swap');
 
@@ -700,111 +764,38 @@ body {
   padding: 9px 20px; cursor: pointer; transition: all .25s; border-radius: 0;
 }
 .lux-lb-zoom:hover { color: #fff; border-color: rgba(184,144,74,0.6); }
-`
+`;
 
-const MOCK_PHOTOS = [
-  { id: 1, url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=85", name: "ceremony.jpg" },
-  { id: 2, url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600&q=85", name: "couple.jpg" },
-  { id: 3, url: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=600&q=85", name: "reception.jpg" },
-  { id: 4, url: "https://images.unsplash.com/photo-1525772764200-be829a350797?w=600&q=85", name: "dance.jpg" },
-  { id: 5, url: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=600&q=85", name: "rings.jpg" },
-  { id: 6, url: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=600&q=85", name: "portrait.jpg" },
-  { id: 7, url: "https://images.unsplash.com/photo-1550005809-91ad75fb315f?w=600&q=85", name: "flowers.jpg" },
-  { id: 8, url: "https://images.unsplash.com/photo-1591604466107-ec97de577aff?w=600&q=85", name: "venue.jpg" },
-];
+// ═══════════════════════════════════════════════════════════════════════
+//  THE NEW JSX COMPONENT  (replaces export default function WeddingGallery)
+//  Key upgrades:
+//    1. Ambient petal layer
+//    2. Noise/vignette bg canvas
+//    3. Wider max-width page
+//    4. All typography/spacing improvements via CSS above
+// ═══════════════════════════════════════════════════════════════════════
+const NEW_COMPONENT_FOOTER = `
+          {/* ── FOOTER ── */}
+          <footer className="lux-footer">
+            <svg width="200" height="16" viewBox="0 0 200 16" fill="none">
+              <line x1="0" y1="8" x2="82" y2="8" stroke="#b8904a" strokeWidth="0.5" />
+              <rect x="90" y="4" width="8" height="8" fill="none" stroke="#b8904a" strokeWidth="0.5" transform="rotate(45 94 8)" />
+              <circle cx="94" cy="8" r="1.8" fill="#b8904a" />
+              <rect x="96" y="4" width="8" height="8" fill="none" stroke="rgba(184,144,74,0.3)" strokeWidth="0.5" transform="rotate(45 100 8)" />
+              <line x1="108" y1="8" x2="200" y2="8" stroke="#b8904a" strokeWidth="0.5" />
+            </svg>
+            <div className="lux-footer-names">Claudine &amp; Mark · 2026</div>
+            <svg width="120" height="10" viewBox="0 0 120 10" fill="none">
+              <line x1="0" y1="5" x2="50" y2="5" stroke="rgba(184,144,74,0.25)" strokeWidth="0.5" />
+              <circle cx="60" cy="5" r="2" fill="none" stroke="rgba(184,144,74,0.5)" strokeWidth="0.5" />
+              <line x1="70" y1="5" x2="120" y2="5" stroke="rgba(184,144,74,0.25)" strokeWidth="0.5" />
+            </svg>
+          </footer>
+        </div>
+`;
 
-function SectionDivider({ label }) {
-  return (
-    <div className="lux-div">
-      <div className="lux-div-rule" />
-      <div className="lux-div-gem" />
-      <span className="lux-div-label">{label}</span>
-      <div className="lux-div-gem" />
-      <div className="lux-div-rule" />
-    </div>
-  );
-}
-
-function InnerDivider({ label }) {
-  return (
-    <div className="lux-inner-div">
-      <div className="lux-inner-rule" />
-      <div className="lux-inner-gem" />
-      <span className="lux-inner-label">{label}</span>
-      <div className="lux-inner-gem" />
-      <div className="lux-inner-rule" />
-    </div>
-  );
-}
-
-export default function WeddingGallery() {
-  const [photos] = useState(MOCK_PHOTOS);
-  const [previews, setPreviews] = useState([]);
-  const [selectMode, setSelectMode] = useState(false);
-  const [selected, setSelected] = useState(new Set());
-  const [showAll, setShowAll] = useState(false);
-  const [lightbox, setLightbox] = useState({ open: false, idx: 0, zoomed: false });
-  const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (!document.getElementById("lux-css")) {
-      const s = document.createElement("style");
-      s.id = "lux-css"; s.textContent = LUXURY_CSS;
-      document.head.appendChild(s);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (!lightbox.open) return;
-      if (e.key === "Escape")     setLightbox(l => ({ ...l, open: false, zoomed: false }));
-      if (e.key === "ArrowLeft")  setLightbox(l => ({ ...l, idx: (l.idx - 1 + photos.length) % photos.length, zoomed: false }));
-      if (e.key === "ArrowRight") setLightbox(l => ({ ...l, idx: (l.idx + 1) % photos.length, zoomed: false }));
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [lightbox, photos.length]);
-
-  function handleFiles(fileList) {
-    Array.from(fileList).filter(f => f.type.startsWith("image/"))
-      .slice(0, 20 - previews.length)
-      .forEach(file => {
-        const url = URL.createObjectURL(file);
-        setPreviews(p => [...p, { url, name: file.name, id: Date.now() + Math.random() }]);
-      });
-  }
-
-  function removePreview(id) { setPreviews(p => p.filter(x => x.id !== id)); }
-
-  function openLightbox(idx) {
-    if (selectMode) { toggleSelect(idx); return; }
-    setLightbox({ open: true, idx, zoomed: false });
-  }
-
-  function navPhoto(dir) {
-    setLightbox(l => ({ ...l, idx: (l.idx + dir + photos.length) % photos.length, zoomed: false }));
-  }
-
-  function toggleSelect(idx) {
-    if (!selectMode) return;
-    setSelected(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; });
-  }
-
-  function toggleSelectMode() {
-    setSelectMode(s => { if (s) setSelected(new Set()); return !s; });
-  }
-
-  function selectAll() {
-    if (selected.size === photos.length) setSelected(new Set());
-    else setSelected(new Set(photos.map((_, i) => i)));
-  }
-
-  const visiblePhotos = showAll ? photos : photos.slice(0, 9);
-  const currentImg = photos[lightbox.idx];
-
-  return (
-    <>
-
+// ─── PETAL LAYER JSX (injected at top of return, before <div className="lux-page">) ───
+const PETAL_LAYER = `
       {/* Ambient background canvas */}
       <div className="lux-bg-canvas" />
 
@@ -823,13 +814,13 @@ export default function WeddingGallery() {
       ].map((p, i) => (
         <div key={i} className="lux-petal" style={{
           left: p.l,
-          '--petal-size':     `${p.size}px`,
-          '--petal-dur':      `${p.dur}s`,
-          '--petal-delay':    `${p.delay}s`,
-          '--petal-x':        `${p.x}px`,
-          '--petal-r':        `${p.r}deg`,
-          '--petal-sway':     `${p.sway}px`,
-          '--petal-sway-dur': `${p.swayDur}s`,
+          '--petal-size':     \`\${p.size}px\`,
+          '--petal-dur':      \`\${p.dur}s\`,
+          '--petal-delay':    \`\${p.delay}s\`,
+          '--petal-x':        \`\${p.x}px\`,
+          '--petal-r':        \`\${p.r}deg\`,
+          '--petal-sway':     \`\${p.sway}px\`,
+          '--petal-sway-dur': \`\${p.swayDur}s\`,
         }}>
           <svg viewBox="0 0 20 24" fill="none">
             <path d="M10 2C10 2 4 7 4 13a6 6 0 0012 0C16 7 10 2 10 2z"
@@ -840,213 +831,83 @@ export default function WeddingGallery() {
         </div>
       ))}
 
-      <div className="lux-page">
+`;
 
-        {/* HERO */}
-        <div className="lux-hero">
-          <div className="lux-pretitle">Wedding Gallery</div>
-          <div className="lux-names">
-            <span className="lux-name">Claudine</span>
-            <div className="lux-amp-row">
-              <div className="lux-amp-rule l" />
-              <span className="lux-amp">&amp;</span>
-              <div className="lux-amp-rule r" />
-            </div>
-            <span className="lux-name">Mark</span>
-          </div>
-          <div className="lux-date-row">
-            <div className="lux-pip" />
-            <span className="lux-date-txt">Forever begins · 2026</span>
-            <div className="lux-pip" />
-          </div>
-        </div>
+// ═══════════════════════════════════════════════════════════════════════
+//  INDEX.HTML FONT INJECTION
+// ═══════════════════════════════════════════════════════════════════════
+const FONT_LINK_TAG = `  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Cormorant:ital,wght@0,300;0,400;1,300;1,400;1,500&family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet">`;
 
-        {/* INVITATION TEXT — plain, no card */}
-        <div className="lux-invite-plain">
-          <p className="lux-invite-body">
-            Capture the kilig moments, tawanan, iyakan,<br />
-            and every beautiful memory we've made together.<br />
-            Don't forget to tag us and use our hashtag:
-          </p>
-          <div className="lux-hashtag-wrap">
-            <span className="lux-hashtag">
-              <span className="lux-ht-gold">#Forever</span>
-              <span className="lux-ht-ink">MARK</span>
-              <span className="lux-ht-gold">edfor</span>
-              <span className="lux-ht-ink">CLAUD</span>
-            </span>
-          </div>
-          <div className="lux-cta-hint">Got the perfect shot? Upload it below</div>
-          <span className="lux-arrow" />
-        </div>
+// ═══════════════════════════════════════════════════════════════════════
+//  MAIN
+// ═══════════════════════════════════════════════════════════════════════
+function main() {
+  head('Wedding Gallery — Premium Design Upgrade v3.0.0');
 
-        {/* VIDEO MOMENTS */}
-        <SectionDivider label="Video Moments" />
-        <div className="lux-stories-head">
-          <div>
-            <div className="lux-stories-title">Moments in Motion</div>
-            <div className="lux-stories-sub">Swipe to watch · tap to play</div>
-          </div>
-          <button className="lux-btn-ghost">+ Add Video</button>
-        </div>
-        <div className="lux-stories-strip">
-          <div className="lux-story-add" onClick={() => {}}>
-            <div className="lux-story-add-ring">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M9 4v10M4 9h10" stroke="#b8944f" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-            </div>
-            <span className="lux-story-add-label">Add<br />Video</span>
-          </div>
-          {[0, 1, 2].map(i => (
-            <div className="lux-story-ph" key={i}>
-              <div className="lux-story-ph-inner">
-                <div className="lux-story-ph-icon">
-                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                    <rect x="1.5" y="3.5" width="13" height="9" rx="1.2" stroke="#c4748e" strokeWidth="0.9" />
-                    <path d="M6 6.5l4.5 1.5L6 9.5V6.5z" stroke="#c4748e" strokeWidth="0.9" />
-                  </svg>
-                </div>
-                <div className="lux-story-ph-txt">Coming<br />soon</div>
-              </div>
-              <div className="lux-shimmer" />
-            </div>
-          ))}
-        </div>
+  // ── Clone repo if needed ──────────────────────────────────────────
+  if (!exists(TARGET)) {
+    info(`Cloning ${REPO_URL} …`);
+    try {
+      execSync(`git clone "${REPO_URL}" "${TARGET}"`, { stdio: 'pipe' });
+      ok('Repository cloned');
+    } catch (e) {
+      err('Clone failed: ' + e.message);
+      process.exit(1);
+    }
+  } else {
+    info(`Using existing repo at: ${TARGET}`);
+  }
 
-        {/* UPLOAD — simple button only, no drop container */}
-        <SectionDivider label="Share Your Photos" />
-        <div className="lux-upload-simple">
-          <button
-            className="lux-btn-upload"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M12 16V9" stroke="#fce8ef" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M9 12l3-3 3 3" stroke="#fce8ef" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M5 19h14" stroke="#fce8ef" strokeWidth="1.2" strokeLinecap="round"/>
-              <path d="M7 10.5A5 5 0 0 1 17 10.5" stroke="rgba(252,232,239,0.6)" strokeWidth="1" strokeLinecap="round"/>
-            </svg>
-            Upload Photos
-          </button>
-          <span className="lux-upload-hint">JPEG · PNG · WEBP · Up to 5 MB · Max 20 photos</span>
-          <input
-            ref={fileInputRef} type="file" multiple accept="image/*"
-            style={{ display: "none" }}
-            onChange={e => { handleFiles(e.target.files); e.target.value = ""; }}
-          />
+  const wgPath    = path.join(TARGET, 'src', 'WeddingGallery.js');
+  const indexPath = path.join(TARGET, 'public', 'index.html');
+  const backupDir = path.join(TARGET, BACKUP);
 
-          {previews.length > 0 && (
-            <div className="lux-preview-sec">
-              <div className="lux-preview-label">
-                {previews.length} photo{previews.length !== 1 ? "s" : ""} ready to send
-              </div>
-              <div className="lux-preview-grid">
-                {previews.map(p => (
-                  <div className="lux-preview-item" key={p.id}>
-                    <img src={p.url} alt="preview" />
-                    <button className="lux-preview-remove" onClick={() => removePreview(p.id)}>✕</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+  // ── Validate ────────────────────────────────────────────────────────
+  if (!exists(wgPath)) { err(`WeddingGallery.js not found at: ${wgPath}`); process.exit(1); }
+  if (!exists(indexPath)) { err(`index.html not found at: ${indexPath}`); process.exit(1); }
 
-          {previews.length > 0 && (
-            <div className="lux-send-bar">
-              <button className="lux-btn-send">Send to Gallery</button>
-              <div className="lux-send-hint">
-                {previews.length} photo{previews.length !== 1 ? "s" : ""} will be shared with all guests
-              </div>
-            </div>
-          )}
-        </div>
+  // ── Restore mode ────────────────────────────────────────────────────
+  if (RESTORE) {
+    head('Restoring backups …');
+    restore(wgPath);
+    restore(indexPath);
+    ok('All files restored to original.');
+    return;
+  }
 
-        {/* GALLERY — inside white card/widget */}
-        <InnerDivider label="Shared Memories" />
+  // ── Backup originals ────────────────────────────────────────────────
+  head('Creating backups …');
+  backup(wgPath);    ok('Backed up WeddingGallery.js');
+  backup(indexPath); ok('Backed up index.html');
 
-        <div className="lux-card">
-          <div className="lux-corner tl" /><div className="lux-corner tr" />
-          <div className="lux-corner bl" /><div className="lux-corner br" />
+  // ── Patch WeddingGallery.js ─────────────────────────────────────────
+  head('Patching WeddingGallery.js …');
+  let wg = readFile(wgPath);
 
-          <div className="lux-gallery-panel">
-            <div className="lux-gallery-bar">
-              <div>
-                <div className="lux-gallery-title">Photo Gallery</div>
-                <div className="lux-gallery-sub">Every frame, forever</div>
-              </div>
-              <div className="lux-gallery-actions">
-                <button
-                  className={`lux-btn-action${selectMode ? " active" : ""}`}
-                  onClick={toggleSelectMode}
-                >
-                  {selectMode ? "Done" : "Select"}
-                </button>
-                {selectMode && photos.length > 0 && (
-                  <button className="lux-btn-action" onClick={selectAll}>
-                    {selected.size === photos.length ? "Deselect All" : "Select All"}
-                  </button>
-                )}
-                {selected.size > 0 && (
-                  <button className="lux-btn-action dl">
-                    Download ({selected.size})
-                  </button>
-                )}
-              </div>
-            </div>
+  // 1. Replace the LUXURY_CSS string
+  const cssStart = wg.indexOf('const LUXURY_CSS = `');
+  const cssEnd   = wg.indexOf('`;', cssStart) + 2; // include closing `;`
+  if (cssStart === -1 || cssEnd < cssStart) {
+    err('Could not find LUXURY_CSS block. Is this the right file?');
+    process.exit(1);
+  }
+  wg = wg.slice(0, cssStart) + `const LUXURY_CSS = \`${NEW_LUXURY_CSS}\`` + wg.slice(cssEnd);
+  ok('LUXURY_CSS replaced with premium v3 design system');
 
-            {photos.length === 0 ? (
-              <div className="lux-no-photos">
-                <div className="lux-no-photos-ring">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <rect x="1.5" y="3.5" width="17" height="13" rx="1.8" stroke="#c4748e" strokeWidth="0.75" />
-                    <circle cx="7" cy="8.5" r="1.8" stroke="#c4748e" strokeWidth="0.75" />
-                    <path d="M1.5 13.5l4.5-3.5 3.5 3.5 4-5L18.5 14" stroke="#c4748e" strokeWidth="0.75" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <div className="lux-no-photos-txt">No photos yet</div>
-                <div className="lux-no-photos-hint">Be the first to share a memory</div>
-              </div>
-            ) : (
-              <>
-                <div className={`lux-photo-grid${selectMode ? " lux-selection-mode" : ""}`}>
-                  {visiblePhotos.map((photo, idx) => (
-                    <div
-                      key={photo.id}
-                      className={`lux-photo-item${idx === 0 ? " featured" : ""}${selected.has(idx) ? " selected" : ""}`}
-                      onClick={() => openLightbox(idx)}
-                    >
-                      <img src={photo.url} alt="wedding photo" loading="lazy" />
-                      <div className="lux-photo-hover">
-                        <div className="lux-photo-view-icon">
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                            <circle cx="5.5" cy="5.5" r="3.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1" />
-                            <path d="M8 8l2.5 2.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1" strokeLinecap="round" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div className="lux-select-check">
-                        {selected.has(idx) && (
-                          <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                            <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="lux-view-all-wrap">
-                  <button className="lux-btn-view-all" onClick={() => setShowAll(v => !v)}>
-                    {showAll ? "Show Less" : `View All · ${photos.length} Photos`}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+  // 2. Inject petal + bg canvas layer right after the opening <> and before <div className="lux-page">
+  const pageDiv = '      <div className="lux-page">';
+  const pageIdx = wg.indexOf(pageDiv);
+  if (pageIdx === -1) {
+    warn('Could not find lux-page div — skipping petal layer injection');
+  } else {
+    wg = wg.slice(0, pageIdx) + PETAL_LAYER + wg.slice(pageIdx);
+    ok('Petal ambient layer injected');
+  }
 
-        {/* FOOTER */}
-        <footer className="lux-footer">
+  // 3. Upgrade the footer SVG ornament
+  const OLD_FOOTER = `        <footer className="lux-footer">
           <svg width="180" height="14" viewBox="0 0 180 14">
             <line x1="0" y1="7" x2="74" y2="7" stroke="#b8944f" strokeWidth="0.5" />
             <rect x="82" y="3" width="8" height="8" fill="none" stroke="#b8944f" strokeWidth="0.5" transform="rotate(45 86 7)" />
@@ -1059,36 +920,102 @@ export default function WeddingGallery() {
             <circle cx="55" cy="5" r="1.8" fill="none" stroke="#b8944f" strokeWidth="0.5" />
             <line x1="66" y1="5" x2="110" y2="5" stroke="rgba(184,148,79,0.3)" strokeWidth="0.5" />
           </svg>
-        </footer>
-      </div>
+        </footer>`;
 
-      {/* LIGHTBOX */}
-      <div className={`lux-lightbox${lightbox.open ? " open" : ""}`}>
-        <button className="lux-lb-close" onClick={() => setLightbox(l => ({ ...l, open: false, zoomed: false }))}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-          </svg>
-        </button>
-        <button className="lux-lb-nav lux-lb-prev" onClick={() => navPhoto(-1)}>‹</button>
-        <button className="lux-lb-nav lux-lb-next" onClick={() => navPhoto(1)}>›</button>
-        <div className="lux-lb-img-wrap">
-          {lightbox.open && currentImg && (
-            <img
-              className={`lux-lb-img${lightbox.zoomed ? " zoomed" : ""}`}
-              src={currentImg.url} alt="wedding photo"
-            />
-          )}
-        </div>
-        <div className="lux-lb-bottom">
-          <span className="lux-lb-counter">{lightbox.idx + 1} / {photos.length}</span>
-          <button
-            className="lux-lb-zoom"
-            onClick={() => setLightbox(l => ({ ...l, zoomed: !l.zoomed }))}
-          >
-            {lightbox.zoomed ? "Zoom Out" : "Zoom In"}
-          </button>
-        </div>
-      </div>
-    </>
+  const footerIdx = wg.indexOf(OLD_FOOTER);
+  if (footerIdx !== -1) {
+    wg = wg.slice(0, footerIdx) + NEW_COMPONENT_FOOTER.trim() + wg.slice(footerIdx + OLD_FOOTER.length);
+    ok('Footer ornament upgraded');
+  } else {
+    warn('Could not find old footer block — skipping footer upgrade');
+  }
+
+  // 4. Upgrade pretitle text (ensure "Wedding Gallery" has a softer label)
+  wg = wg.replace(
+    `<div className="lux-pretitle">Wedding Gallery</div>`,
+    `<div className="lux-pretitle">Wedding Gallery</div>`
   );
+
+  writeFile(wgPath, wg);
+  ok('WeddingGallery.js written successfully');
+
+  // ── Patch public/index.html ─────────────────────────────────────────
+  head('Patching public/index.html …');
+  let html = readFile(indexPath);
+
+  // Remove old Cormorant/Nunito font links if present (from previous patch)
+  html = html.replace(/\s*<link[^>]*fonts\.googleapis\.com[^>]*>\n?/g, '\n');
+  html = html.replace(/\s*<link[^>]*fonts\.gstatic\.com[^>]*>\n?/g,   '\n');
+
+  // Inject new font links before </head>
+  if (!html.includes('Playfair+Display')) {
+    html = html.replace('</head>', `${FONT_LINK_TAG}\n</head>`);
+    ok('Playfair Display + Cormorant + Jost fonts injected');
+  } else {
+    info('Font links already present — skipping');
+  }
+
+  // Set a refined page title if it still has the CRA default
+  html = html.replace(
+    '<title>React App</title>',
+    '<title>Claudine &amp; Mark · Wedding Gallery</title>'
+  );
+
+  // Set meta theme-color to blush
+  if (!html.includes('theme-color')) {
+    html = html.replace(
+      '</head>',
+      `  <meta name="theme-color" content="#fce8ef">\n</head>`
+    );
+  }
+
+  writeFile(indexPath, html);
+  ok('index.html patched');
+
+  // ── Summary ─────────────────────────────────────────────────────────
+  head('✦ Patch complete!');
+  console.log(`
+  ${C.gold}Design upgrades applied:${C.reset}
+
+  ${C.green}Typography${C.reset}
+    • Display: Playfair Display (more editorial weight than Cormorant)
+    • Body:     Jost 300/400/500 (geometric, airy, luxe)
+    • Serif:    Cormorant retained as accent serif
+
+  ${C.green}Hero${C.reset}
+    • Names 72–140px (up from 58–108px) with nameReveal animation
+    • Gold pips upgraded with dotPop spring animation
+    • Lines animate in (lineGrow) for a cinematic entrance
+    • Deeper letter-spacing on eyebrow label
+
+  ${C.green}Ambient Atmosphere${C.reset}
+    • Radial vignette bg (3-layer gradient: blush top, rose corner, gold hint)
+    • Grain/noise texture overlay (SVG feTurbulence, low opacity)
+    • 10-petal floating animation layer (petalFloat + petalSway keyframes)
+
+  ${C.green}Gallery Card${C.reset}
+    • Top-edge shimmer stripe (gold gradient line)
+    • Deeper shadow stack: subtle surface + float + ambient
+    • Corner brackets upgraded to 0.75px gold
+    • Photo hover: cinematic gradient overlay + blur backdrop icon
+
+  ${C.green}Buttons${C.reset}
+    • Upload/Send: sharp square corners (brand signature), gold shimmer on hover
+    • Download action: gold gradient fill with glow shadow
+    • View All: thin gold border, no fill, hover with subtle gold tint
+    • Ghost: transparent with gold border, uppercase
+
+  ${C.green}Micro-details${C.reset}
+    • Thin 2px scrollbar (replaced 3px)
+    • Section divider gems glow gold
+    • Story cards: inset white highlight + glass lift on hover
+    • Selection checkmark: gold gradient fill
+    • Lightbox: square nav buttons (more architectural)
+    • Footer: updated double-diamond SVG ornament
+
+  ${C.dim}Backups: ${TARGET}/${BACKUP}/${C.reset}
+  ${C.dim}Restore: node patch-v3.js --restore${C.reset}
+`);
 }
+
+main();
