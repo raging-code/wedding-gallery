@@ -1,686 +1,523 @@
 import { useState, useEffect, useRef } from "react";
 
-/* SAKURA_OVERHAUL_V1 */
-const SAKURA_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
+const LUXURY_CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Nunito:wght@400;500;600&display=swap');
 
 :root {
-  --sakura-pink:   #ffb7c5;
-  --sakura-dark:   #ffb7c5;
-  --soft-cream:    #fff0f1;
-  --japan-red:     #bc3f2e;
-  --gold-leaf:     #d4af37;
-  --dark-charcoal: #31231a;
+  --page-bg:       #fce8ef;
+  --page-bg-deep:  #f9d5e2;
+  --white:         #ffffff;
+  --white-off:     #fdfbfc;
+  --pink:          #fce8ef;
+  --pink-deep:     #f9d5e2;
+  --pink-dark:     #c4748e;
+  --pink-border:   rgba(196,116,142,0.22);
+  --pink-shadow:   rgba(196,116,142,0.12);
+  --gold:          #b8944f;
+  --gold-light:    #d4b47a;
+  --gold-border:   rgba(184,148,79,0.28);
+  --ink:           #1c0f14;
+  --ink-80:        rgba(28,15,20,0.80);
+  --ink-60:        rgba(28,15,20,0.60);
+  --ink-40:        rgba(28,15,20,0.40);
+  --ink-10:        rgba(28,15,20,0.07);
 
-  /* Computed tints & transparencies */
-  --sakura-10:     rgba(255,183,197,0.10);
-  --sakura-18:     rgba(255,183,197,0.18);
-  --sakura-30:     rgba(255,183,197,0.30);
-  --sakura-60:     rgba(255,183,197,0.60);
-  --red-10:        rgba(188,63,46,0.10);
-  --red-20:        rgba(188,63,46,0.20);
-  --gold-15:       rgba(212,175,55,0.15);
-  --gold-35:       rgba(212,175,55,0.35);
-  --charcoal-40:   rgba(49,35,26,0.40);
-  --charcoal-55:   rgba(49,35,26,0.55);
-  --charcoal-70:   rgba(49,35,26,0.70);
-  --charcoal-08:   rgba(49,35,26,0.08);
-  --white-pure:    #ffffff;
-
-  --font-display: 'Cormorant Garamond', 'Georgia', serif;
-  --font-body:    'DM Sans', system-ui, sans-serif;
+  --font-display: 'Cormorant', Georgia, serif;
+  --font-body:    'Nunito', system-ui, sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 
 body {
-  background-color: var(--soft-cream);
-  background-image:
-    radial-gradient(ellipse 80% 60% at 110% -10%, rgba(255,183,197,0.22) 0%, transparent 65%),
-    radial-gradient(ellipse 60% 50% at -10% 100%, rgba(212,175,55,0.07) 0%, transparent 55%);
+  background: var(--page-bg);
   font-family: var(--font-body);
   font-weight: 400;
   overflow-x: hidden;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  color: var(--dark-charcoal);
 }
 
-/* ── ANIMATIONS ───────────────────────────────────── */
-@keyframes riseIn {
-  from { opacity: 0; transform: translateY(32px); }
+/* ── ANIMATIONS ─────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes petalDrift {
-  0%   { transform: translateY(0) rotate(0deg); opacity: 0.7; }
-  100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
-}
-@keyframes goldShimmer {
+@keyframes shimmer {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }
 }
-@keyframes softPulse {
-  0%,100% { opacity: 1; }
-  50%      { opacity: 0.55; }
+@keyframes pinkPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(196,116,142,0.5); }
+  70%  { box-shadow: 0 0 0 10px rgba(196,116,142,0); }
+  100% { box-shadow: 0 0 0 0 rgba(196,116,142,0); }
 }
 
-/* ── PETALS (ambient background decoration) ───────── */
-.sk-petals {
-  position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
-}
-.sk-petal {
-  position: absolute; top: -40px;
-  width: 8px; height: 8px; border-radius: 50% 0 50% 0;
-  background: var(--sakura-pink);
-  animation: petalDrift linear infinite;
-  opacity: 0;
-}
-.sk-petal:nth-child(1)  { left:  8%; width:7px; height:7px; animation-duration: 14s; animation-delay:  0s; }
-.sk-petal:nth-child(2)  { left: 22%; width:5px; height:5px; animation-duration: 11s; animation-delay:  3s; }
-.sk-petal:nth-child(3)  { left: 38%; width:9px; height:9px; animation-duration: 16s; animation-delay:  7s; }
-.sk-petal:nth-child(4)  { left: 55%; width:6px; height:6px; animation-duration: 12s; animation-delay:  1s; }
-.sk-petal:nth-child(5)  { left: 70%; width:8px; height:8px; animation-duration: 15s; animation-delay:  5s; }
-.sk-petal:nth-child(6)  { left: 85%; width:5px; height:5px; animation-duration: 13s; animation-delay:  9s; }
-.sk-petal:nth-child(7)  { left: 14%; width:7px; height:7px; animation-duration: 17s; animation-delay: 11s; }
-.sk-petal:nth-child(8)  { left: 60%; width:6px; height:6px; animation-duration: 10s; animation-delay:  4s; }
-
-/* ── SCROLL RIBBON (kakejiku) — right edge decoration ── */
-.sk-ribbon {
-  position: fixed; top: 0; right: 0; width: 4px; height: 100vh;
-  background: linear-gradient(180deg,
-    transparent 0%,
-    var(--sakura-30) 15%,
-    var(--sakura-pink) 40%,
-    var(--sakura-60) 60%,
-    var(--gold-leaf) 80%,
-    transparent 100%
-  );
-  z-index: 2; pointer-events: none;
-}
-@media (min-width: 760px) {
-  .sk-ribbon { width: 6px; }
-}
-
-/* ── PAGE WRAPPER ─────────────────────────────────── */
-.sk-page {
+/* ── PAGE WRAPPER ────────────────────────────────── */
+.lux-page {
   position: relative; z-index: 1;
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
-  padding: 0 24px 120px;
+  padding: 0 16px 100px;
 }
 @media (min-width: 640px) {
-  .sk-page { padding: 0 44px 120px; }
+  .lux-page { padding: 0 28px 100px; }
 }
 
-/* ── HERO ─────────────────────────────────────────── */
-.sk-hero {
-  padding: 72px 0 56px;
-  animation: riseIn 1.1s cubic-bezier(.16,.84,.44,1) both;
+/* ── HERO ────────────────────────────────────────── */
+.lux-hero {
+  padding: 52px 0 44px;
+  text-align: center;
+  animation: fadeUp 1s cubic-bezier(.22,.68,0,1.2) both;
 }
-
-.sk-eyebrow {
-  display: inline-flex; align-items: center; gap: 12px;
-  margin-bottom: 44px;
-}
-.sk-eyebrow-gem {
-  width: 6px; height: 6px;
-  background: var(--japan-red);
-  transform: rotate(45deg);
-  flex-shrink: 0;
-}
-.sk-eyebrow-text {
+.lux-pretitle {
   font-family: var(--font-body);
-  font-size: 10px; font-weight: 600;
-  letter-spacing: 0.44em; text-transform: uppercase;
-  color: var(--japan-red);
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--gold);
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-bottom: 24px;
 }
-
-/* Name composition: stacked vertical Japanese-poster layout */
-.sk-name-block {
-  position: relative;
-  display: flex; flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
+.lux-pretitle::before, .lux-pretitle::after {
+  content: ''; display: block; height: 0.5px; width: 36px;
 }
+.lux-pretitle::before { background: linear-gradient(90deg, transparent, var(--gold)); }
+.lux-pretitle::after  { background: linear-gradient(90deg, var(--gold), transparent); }
 
-.sk-name-primary {
+.lux-names { display: flex; flex-direction: column; align-items: center; }
+.lux-name {
   font-family: var(--font-display);
   font-style: italic; font-weight: 300;
-  font-size: clamp(62px, 15vw, 114px);
-  line-height: 0.85; letter-spacing: -0.025em;
-  color: var(--dark-charcoal);
+  font-size: clamp(58px, 14vw, 108px);
+  line-height: 0.86; letter-spacing: -0.01em;
+  color: var(--ink);
 }
-
-.sk-connector-row {
-  display: flex; align-items: center; gap: 0;
-  margin: 10px 0 10px 4px;
-  width: 100%;
+.lux-amp-row {
+  display: flex; align-items: center; gap: 18px;
+  margin: 10px 0 8px;
 }
-/* Vertical ampersand in a gold pill — the signature element */
-.sk-amp-pill {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  width: 28px; height: 54px;
-  background: var(--gold-leaf);
-  border-radius: 14px;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-  box-shadow: 0 4px 18px rgba(212,175,55,0.35);
-}
-.sk-amp-glyph {
+.lux-amp-rule { height: 0.5px; width: 56px; }
+.lux-amp-rule.l { background: linear-gradient(90deg, transparent, var(--gold)); }
+.lux-amp-rule.r { background: linear-gradient(90deg, var(--gold), transparent); }
+.lux-amp {
   font-family: var(--font-display);
-  font-style: italic; font-weight: 600;
-  font-size: 18px; line-height: 1;
-  color: #fff0d8;
-  letter-spacing: 0;
+  font-style: italic; font-weight: 400;
+  font-size: clamp(15px, 3vw, 22px);
+  color: var(--gold); letter-spacing: 0.12em;
 }
-.sk-connector-line {
-  height: 1px; flex: 1;
-  background: linear-gradient(90deg, var(--gold-leaf), transparent);
-  margin-left: 16px;
-  opacity: 0.4;
+.lux-date-row {
+  margin-top: 22px;
+  display: flex; align-items: center; justify-content: center; gap: 14px;
 }
-
-.sk-name-secondary {
-  font-family: var(--font-display);
-  font-style: normal; font-weight: 400;
-  font-size: clamp(48px, 11vw, 88px);
-  line-height: 0.9; letter-spacing: -0.015em;
-  color: var(--sakura-pink);
-  align-self: flex-end;
-  text-align: right;
-  width: 100%;
-  /* Subtle gold underline shimmer */
-  background: linear-gradient(90deg,
-    var(--sakura-pink) 0%, var(--sakura-pink) 40%,
-    var(--gold-leaf) 55%, var(--sakura-pink) 70%,
-    var(--sakura-pink) 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: goldShimmer 8s linear infinite;
-}
-
-.sk-date-strip {
-  margin-top: 32px;
-  display: flex; align-items: center; gap: 14px;
-}
-.sk-date-rule { height: 1px; width: 32px; background: var(--charcoal-40); }
-.sk-date-txt {
+.lux-pip { width: 5px; height: 5px; background: var(--pink-dark); transform: rotate(45deg); }
+.lux-date-txt {
   font-family: var(--font-body);
-  font-size: 10px; font-weight: 400; letter-spacing: 0.38em;
-  text-transform: uppercase; color: var(--charcoal-55);
+  font-size: 12px; font-weight: 400; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--ink-40);
 }
 
-/* ── INVITE VERSE ─────────────────────────────────── */
-.sk-verse {
-  margin: 44px 0 0;
-  padding: 28px 0 28px 24px;
-  border-left: 3px solid var(--sakura-pink);
-  position: relative;
-  animation: riseIn 1.1s cubic-bezier(.16,.84,.44,1) 0.1s both;
+/* ── INVITATION TEXT (plain, no card) ────────────── */
+.lux-invite-plain {
+  margin: 32px auto;
+  max-width: 540px;
+  text-align: center;
+  animation: fadeUp 1s cubic-bezier(.22,.68,0,1.2) 0.08s both;
 }
-.sk-verse::before {
-  content: '“';
-  position: absolute; top: -8px; left: 12px;
-  font-family: var(--font-display);
-  font-size: 72px; font-style: italic; font-weight: 300;
-  color: var(--sakura-pink); opacity: 0.4;
-  line-height: 1; pointer-events: none;
-}
-.sk-verse-body {
+.lux-invite-body {
   font-family: var(--font-display);
   font-style: italic; font-weight: 300;
-  font-size: clamp(16px, 4vw, 20px);
+  font-size: clamp(15px, 3.8vw, 19px);
   line-height: 1.95; letter-spacing: 0.01em;
-  color: var(--charcoal-70);
-  position: relative; z-index: 1;
+  color: var(--ink-60);
 }
-.sk-hashtag-block { margin-top: 22px; }
-.sk-hashtag {
+.lux-hashtag-wrap { margin-top: 18px; }
+.lux-hashtag {
   font-family: var(--font-display);
   font-style: italic; font-weight: 500;
-  font-size: clamp(24px, 6vw, 44px);
+  font-size: clamp(22px, 5.5vw, 40px);
   line-height: 1.1; letter-spacing: 0.01em;
   display: inline;
 }
-.sk-ht-gold { color: var(--gold-leaf); }
-.sk-ht-red  { color: var(--japan-red); }
-.sk-cta-nudge {
-  margin-top: 22px;
+.lux-ht-gold { color: var(--gold); }
+.lux-ht-ink  { color: var(--ink); }
+.lux-cta-hint {
+  margin-top: 20px;
   font-family: var(--font-body);
-  font-size: 12px; font-weight: 400; letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--charcoal-40);
-  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 400; letter-spacing: 0.08em;
+  color: var(--ink-40);
 }
-.sk-cta-nudge::after {
-  content: ''; display: block;
-  width: 20px; height: 1px;
-  background: var(--charcoal-40);
+.lux-arrow {
+  display: block; margin: 10px auto 0;
+  width: 1px; height: 28px;
+  background: linear-gradient(180deg, var(--gold), transparent);
 }
 
-/* ── SECTION DIVIDER ──────────────────────────────── */
-.sk-div {
-  margin: 64px 0 28px;
+/* ── SECTION DIVIDER ─────────────────────────────── */
+.lux-div {
   display: flex; align-items: center; gap: 14px;
+  margin: 44px 0 20px;
 }
-.sk-div-gem {
-  width: 5px; height: 5px;
-  background: var(--japan-red);
-  transform: rotate(45deg); flex-shrink: 0;
+.lux-div-rule {
+  flex: 1; height: 0.5px;
+  background: linear-gradient(90deg, transparent, rgba(196,116,142,0.4) 50%, transparent);
 }
-.sk-div-label {
+.lux-div-gem { width: 5px; height: 5px; background: var(--pink-dark); transform: rotate(45deg); flex-shrink: 0; }
+.lux-div-label {
   font-family: var(--font-body);
-  font-size: 10px; font-weight: 600; letter-spacing: 0.40em;
-  text-transform: uppercase; color: var(--japan-red);
-}
-.sk-div-rule {
-  flex: 1; height: 1px;
-  background: linear-gradient(90deg, var(--charcoal-08), transparent);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--pink-dark); white-space: nowrap;
 }
 
-/* ── INNER DIVIDER ────────────────────────────────── */
-.sk-inner-div {
-  margin: 40px 0 22px;
-  display: flex; align-items: center; gap: 12px;
+/* ── INNER DIVIDER ───────────────────────────────── */
+.lux-inner-div {
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 20px; margin: 26px 0;
 }
-.sk-inner-gem {
-  width: 4px; height: 4px;
-  background: var(--gold-leaf);
-  transform: rotate(45deg); flex-shrink: 0;
-}
-.sk-inner-label {
+.lux-inner-rule { flex: 1; height: 0.5px; background: rgba(184,148,79,0.22); }
+.lux-inner-gem { width: 4px; height: 4px; background: var(--pink-dark); transform: rotate(45deg); flex-shrink: 0; }
+.lux-inner-label {
   font-family: var(--font-body);
-  font-size: 10px; font-weight: 600; letter-spacing: 0.36em;
-  text-transform: uppercase; color: var(--gold-leaf);
-}
-.sk-inner-rule {
-  flex: 1; height: 1px;
-  background: linear-gradient(90deg, var(--gold-35), transparent);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--pink-dark); white-space: nowrap;
 }
 
-/* ── VIDEO STORIES ────────────────────────────────── */
-.sk-stories-head {
+/* ── VIDEO STORIES ───────────────────────────────── */
+.lux-stories-head {
   display: flex; align-items: flex-end; justify-content: space-between;
-  margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
 }
-.sk-stories-title {
+.lux-stories-title {
   font-family: var(--font-display);
-  font-style: italic; font-weight: 300;
-  font-size: clamp(20px, 4.5vw, 26px); color: var(--dark-charcoal);
-  letter-spacing: -0.01em;
+  font-style: italic; font-weight: 400;
+  font-size: clamp(18px, 4vw, 22px); color: var(--ink);
 }
-.sk-stories-sub {
+.lux-stories-sub {
   font-family: var(--font-body);
-  font-size: 12px; font-weight: 400; letter-spacing: 0.02em;
-  color: var(--charcoal-40); margin-top: 4px;
+  font-size: 13px; font-weight: 400; letter-spacing: 0.02em;
+  color: var(--ink-40); margin-top: 3px;
 }
-.sk-btn-ghost {
-  font-family: var(--font-body); font-size: 11px; font-weight: 600;
-  letter-spacing: 0.12em; text-transform: uppercase;
-  padding: 9px 18px; background: transparent;
-  border: 1px solid var(--sakura-30); color: var(--japan-red);
-  cursor: pointer; transition: all .25s; border-radius: 0;
+.lux-btn-ghost {
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 9px 16px; background: var(--white);
+  border: 0.5px solid var(--pink-border); color: var(--ink-80);
+  cursor: pointer; transition: all .25s; border-radius: 6px;
 }
-.sk-btn-ghost:hover {
-  background: var(--sakura-10); border-color: var(--sakura-pink);
-}
+.lux-btn-ghost:hover { background: var(--pink-deep); border-color: var(--pink-dark); }
 
-.sk-stories-strip {
+.lux-stories-strip {
   display: flex; gap: 10px; overflow-x: auto;
-  padding: 4px 2px 16px; scroll-snap-type: x mandatory;
+  padding: 4px 2px 14px; scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
 }
-.sk-stories-strip::-webkit-scrollbar { height: 2px; }
-.sk-stories-strip::-webkit-scrollbar-thumb { background: var(--sakura-30); border-radius: 2px; }
+.lux-stories-strip::-webkit-scrollbar { height: 2px; }
+.lux-stories-strip::-webkit-scrollbar-thumb { background: var(--pink-border); border-radius: 2px; }
 
-.sk-story-add {
-  flex-shrink: 0; width: 90px; height: 160px;
-  background: var(--white-pure);
-  border: 1.5px dashed var(--sakura-30);
+.lux-story-add {
+  flex-shrink: 0; width: 88px; height: 156px;
+  border-radius: 14px;
+  background: var(--white);
+  border: 0.5px solid var(--pink-border);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 10px; cursor: pointer; transition: all .3s; scroll-snap-align: start;
-  position: relative; overflow: hidden;
+  box-shadow: 0 2px 12px var(--pink-shadow);
 }
-.sk-story-add::before {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(135deg, var(--sakura-10), transparent 60%);
-  pointer-events: none;
-}
-.sk-story-add:hover {
+.lux-story-add:hover {
   transform: translateY(-3px);
-  border-color: var(--sakura-pink);
-  box-shadow: 0 8px 28px var(--sakura-18);
+  box-shadow: 0 8px 24px var(--pink-shadow);
 }
-.sk-story-add-ring {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: var(--sakura-10);
-  border: 1px solid var(--sakura-30);
+.lux-story-add-ring {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(196,116,142,0.1);
+  border: 0.5px solid var(--pink-dark);
   display: flex; align-items: center; justify-content: center; transition: all .3s;
 }
-.sk-story-add:hover .sk-story-add-ring {
-  background: var(--sakura-18); border-color: var(--sakura-pink);
-}
-.sk-story-add-label {
+.lux-story-add:hover .lux-story-add-ring { animation: pinkPulse 1.2s ease-out infinite; }
+.lux-story-add-label {
   font-family: var(--font-body);
-  font-size: 11px; font-weight: 500; letter-spacing: 0.04em;
-  color: var(--charcoal-55); text-align: center; line-height: 1.5;
+  font-size: 12px; font-weight: 500; letter-spacing: 0.02em;
+  color: var(--ink-60); text-align: center; line-height: 1.5;
 }
-.sk-story-ph {
-  flex-shrink: 0; width: 90px; height: 160px;
-  scroll-snap-align: start; overflow: hidden; position: relative;
-  background: var(--white-pure);
-  border: 0.5px solid var(--sakura-18);
-  border-top: 2px solid var(--sakura-pink);
+.lux-story-ph {
+  flex-shrink: 0; width: 88px; height: 156px;
+  border-radius: 14px; scroll-snap-align: start;
+  overflow: hidden; position: relative;
+  background: var(--white);
+  border: 0.5px solid var(--pink-border);
+  box-shadow: 0 2px 12px var(--pink-shadow);
 }
-.sk-story-ph-inner {
+.lux-story-ph-inner {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
 }
-.sk-story-ph-icon {
+.lux-story-ph-icon {
   width: 34px; height: 34px; border-radius: 50%;
-  background: var(--sakura-10);
-  border: 0.5px dashed var(--sakura-30);
+  background: rgba(196,116,142,0.08);
+  border: 0.5px dashed var(--pink-dark);
   display: flex; align-items: center; justify-content: center;
 }
-.sk-story-ph-txt {
+.lux-story-ph-txt {
   font-family: var(--font-body);
-  font-size: 11px; font-weight: 400; letter-spacing: 0.02em;
-  color: var(--charcoal-40); text-align: center;
+  font-size: 12px; font-weight: 400; letter-spacing: 0.02em;
+  color: var(--ink-40); text-align: center;
+}
+.lux-shimmer {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%);
+  background-size: 200%; animation: shimmer 3s ease-in-out infinite; pointer-events: none;
 }
 @media (min-width: 480px) {
-  .sk-story-add, .sk-story-ph { width: 102px; height: 178px; }
+  .lux-story-add, .lux-story-ph { width: 100px; height: 176px; }
 }
 
-/* ── UPLOAD SECTION ───────────────────────────────── */
-.sk-upload {
+/* ── UPLOAD SECTION — simple button, no drop container ── */
+.lux-upload-simple {
   display: flex; flex-direction: column; align-items: center;
-  gap: 16px; padding: 8px 0 4px;
-  animation: riseIn 1.1s cubic-bezier(.16,.84,.44,1) 0.12s both;
+  gap: 14px;
+  padding: 8px 0 4px;
+  animation: fadeUp 1s cubic-bezier(.22,.68,0,1.2) 0.1s both;
 }
-.sk-btn-upload {
-  display: inline-flex; align-items: center; gap: 12px;
-  font-family: var(--font-body); font-size: 12px; font-weight: 600;
-  letter-spacing: 0.14em; text-transform: uppercase;
-  padding: 16px 44px;
-  background: var(--japan-red); color: #fff;
-  border: none; cursor: pointer; border-radius: 0;
-  transition: all .3s;
-  box-shadow: 0 4px 22px rgba(188,63,46,0.25);
-  position: relative; overflow: hidden;
+.lux-btn-upload {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--font-body); font-size: 15px; font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 14px 36px;
+  background: var(--ink); color: #fce8ef;
+  border: none; cursor: pointer; border-radius: 2px;
+  transition: all .25s;
+  box-shadow: 0 4px 18px rgba(28,15,20,0.18);
 }
-.sk-btn-upload::after {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
-  transform: translateX(-100%); transition: transform 0.5s;
-}
-.sk-btn-upload:hover::after { transform: translateX(100%); }
-.sk-btn-upload:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 32px rgba(188,63,46,0.32);
-}
-.sk-upload-hint {
+.lux-btn-upload:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 8px 28px rgba(28,15,20,0.22); }
+.lux-upload-hint {
   font-family: var(--font-body);
-  font-size: 12px; font-weight: 400; letter-spacing: 0.04em;
-  color: var(--charcoal-40);
+  font-size: 13px; font-weight: 400; letter-spacing: 0.02em;
+  color: var(--ink-40);
 }
 
-/* ── PREVIEW ──────────────────────────────────────── */
-.sk-preview-sec { width: 100%; margin-top: 4px; }
-.sk-preview-label {
+/* ── PREVIEW ─────────────────────────────────────── */
+.lux-preview-sec {
+  width: 100%; margin-top: 4px;
+}
+.lux-preview-label {
   font-family: var(--font-body);
-  font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--gold-leaf); margin-bottom: 12px;
-  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
 }
-.sk-preview-label::before {
-  content: ''; display: block; width: 18px; height: 1px;
-  background: var(--gold-leaf); opacity: 0.5;
+.lux-preview-label::before { content: ''; display: block; width: 18px; height: 0.5px; background: var(--gold-border); }
+.lux-preview-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 5px;
 }
-.sk-preview-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 6px;
+.lux-preview-item {
+  aspect-ratio: 1; border-radius: 4px; overflow: hidden;
+  position: relative; background: var(--pink-deep);
 }
-.sk-preview-item {
-  aspect-ratio: 1; overflow: hidden;
-  position: relative; background: var(--sakura-10);
-  border: 1px solid var(--sakura-18);
-}
-.sk-preview-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.sk-preview-remove {
-  position: absolute; inset: 0; background: rgba(49,35,26,0.52);
+.lux-preview-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lux-preview-remove {
+  position: absolute; inset: 0; background: rgba(28,15,20,0.5);
   display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: .2s; border: none; color: white; font-size: 13px; cursor: pointer;
 }
-.sk-preview-item:hover .sk-preview-remove { opacity: 1; }
+.lux-preview-item:hover .lux-preview-remove { opacity: 1; }
 
-/* ── SEND BAR ─────────────────────────────────────── */
-.sk-send-bar {
-  width: 100%; padding: 20px 0 4px;
+/* ── SEND BAR ────────────────────────────────────── */
+.lux-send-bar {
+  width: 100%; padding: 16px 0 4px;
   text-align: center;
 }
-.sk-btn-send {
-  font-family: var(--font-body); font-size: 12px; font-weight: 600;
-  letter-spacing: 0.14em; text-transform: uppercase;
-  padding: 16px 56px;
-  background: linear-gradient(135deg, var(--gold-leaf), #c9a227);
-  color: var(--dark-charcoal);
-  border: none; cursor: pointer; transition: all .3s; border-radius: 0;
-  box-shadow: 0 4px 20px var(--gold-35);
+.lux-btn-send {
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 14px 48px;
+  background: var(--ink); color: #fce8ef;
+  border: none; cursor: pointer; transition: all .25s; border-radius: 2px;
+  box-shadow: 0 4px 20px rgba(28,15,20,0.18);
 }
-.sk-btn-send:hover {
-  transform: translateY(-2px); box-shadow: 0 10px 32px var(--gold-35);
-}
-.sk-btn-send:disabled { opacity: .45; cursor: not-allowed; transform: none; }
-.sk-send-hint {
-  margin-top: 10px;
+.lux-btn-send:hover { transform: translateY(-2px); box-shadow: 0 10px 36px rgba(28,15,20,0.24); }
+.lux-btn-send:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.lux-send-hint {
+  margin-top: 9px;
   font-family: var(--font-body);
-  font-size: 12px; letter-spacing: 0.02em; color: var(--charcoal-40);
+  font-size: 13px; font-weight: 400;
+  letter-spacing: 0.02em; color: var(--ink-40);
 }
 
-/* ── GALLERY CARD ─────────────────────────────────── */
-.sk-card {
-  background: var(--white-pure);
-  border: 1px solid var(--sakura-18);
-  border-top: 3px solid var(--sakura-pink);
-  box-shadow: 0 6px 40px rgba(255,183,197,0.14), 0 1px 0 var(--gold-15);
+/* ── GALLERY CARD — white background ─────────────── */
+.lux-card {
+  background: var(--white);
+  border: 0.5px solid var(--pink-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 0 rgba(196,116,142,0.12), 0 20px 56px rgba(196,116,142,0.10);
   position: relative; overflow: hidden;
-  animation: riseIn 1.1s cubic-bezier(.16,.84,.44,1) 0.18s both;
+  animation: fadeUp 1s cubic-bezier(.22,.68,0,1.2) 0.15s both;
 }
-/* gold corner accent */
-.sk-card::before {
-  content: ''; position: absolute; top: 0; right: 0;
-  width: 40px; height: 40px;
-  background: linear-gradient(225deg, var(--gold-leaf) 0%, transparent 50%);
-  opacity: 0.25; pointer-events: none;
+.lux-corner {
+  position: absolute; width: 20px; height: 20px; pointer-events: none; z-index: 2;
 }
+.lux-corner.tl { top: 9px; left: 9px;   border-top: 0.5px solid var(--gold); border-left: 0.5px solid var(--gold); }
+.lux-corner.tr { top: 9px; right: 9px;  border-top: 0.5px solid var(--gold); border-right: 0.5px solid var(--gold); }
+.lux-corner.bl { bottom: 9px; left: 9px;  border-bottom: 0.5px solid var(--gold); border-left: 0.5px solid var(--gold); }
+.lux-corner.br { bottom: 9px; right: 9px; border-bottom: 0.5px solid var(--gold); border-right: 0.5px solid var(--gold); }
 
-.sk-gallery-panel { padding: 28px 20px 30px; }
+.lux-gallery-panel { padding: 24px 18px 26px; }
 @media (min-width: 480px) {
-  .sk-gallery-panel { padding: 32px 28px 36px; }
+  .lux-gallery-panel { padding: 28px 24px 30px; }
 }
 
-.sk-gallery-bar {
+.lux-gallery-bar {
   display: flex; align-items: flex-start; justify-content: space-between;
-  flex-wrap: wrap; gap: 10px; margin-bottom: 22px;
+  flex-wrap: wrap; gap: 10px; margin-bottom: 18px;
 }
-.sk-gallery-title {
+.lux-gallery-title {
   font-family: var(--font-display);
-  font-style: italic; font-weight: 300;
-  font-size: clamp(20px, 4.5vw, 26px); color: var(--dark-charcoal);
-  letter-spacing: -0.01em;
+  font-style: italic; font-weight: 400;
+  font-size: clamp(18px, 4vw, 22px); color: var(--ink);
 }
-.sk-gallery-sub {
+.lux-gallery-sub {
   font-family: var(--font-body);
-  font-size: 12px; font-weight: 400;
-  color: var(--charcoal-40); margin-top: 4px;
+  font-size: 13px; font-weight: 400;
+  color: var(--ink-40); margin-top: 3px;
 }
-.sk-gallery-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.sk-btn-action {
-  font-family: var(--font-body); font-size: 11px; font-weight: 600;
-  letter-spacing: 0.10em; text-transform: uppercase;
-  padding: 7px 14px; background: transparent;
-  border: 1px solid var(--sakura-30); color: var(--charcoal-55);
-  cursor: pointer; transition: all .2s; border-radius: 0;
+.lux-gallery-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.lux-btn-action {
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 7px 14px; background: rgba(196,116,142,0.08);
+  border: 0.5px solid var(--pink-border); color: var(--ink-80);
+  cursor: pointer; transition: all .2s; border-radius: 5px;
 }
-.sk-btn-action:hover  { border-color: var(--sakura-pink); background: var(--sakura-10); color: var(--japan-red); }
-.sk-btn-action.active { background: var(--japan-red); color: #fff; border-color: var(--japan-red); }
-.sk-btn-action.dl     { background: var(--gold-leaf); color: var(--dark-charcoal); border-color: var(--gold-leaf); }
+.lux-btn-action:hover { border-color: var(--pink-dark); background: rgba(196,116,142,0.14); }
+.lux-btn-action.active { background: var(--ink); color: #fce8ef; border-color: var(--ink); }
+.lux-btn-action.dl { background: var(--ink); color: #fce8ef; border-color: var(--ink); }
 
-/* Mobile 2-col; ≥480 3-col */
-.sk-photo-grid {
+/* Mobile: 2-col; ≥480: 3-col */
+.lux-photo-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  grid-auto-rows: 148px;
-  gap: 5px;
+  grid-auto-rows: 138px;
+  gap: 4px;
 }
 @media (min-width: 480px) {
-  .sk-photo-grid { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 162px; }
+  .lux-photo-grid { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 154px; }
 }
 @media (min-width: 640px) {
-  .sk-photo-grid { grid-auto-rows: 172px; }
+  .lux-photo-grid { grid-auto-rows: 164px; }
 }
-.sk-photo-item {
-  cursor: pointer; overflow: hidden;
-  background: var(--sakura-10);
-  position: relative; border: 2px solid transparent; transition: all .28s;
+.lux-photo-item {
+  cursor: pointer; border-radius: 3px; overflow: hidden;
+  background: var(--pink-deep);
+  position: relative; border: 2px solid transparent; transition: all .25s;
 }
-.sk-photo-item.featured { grid-column: span 2; grid-row: span 2; }
-.sk-photo-item.selected { border-color: var(--japan-red); }
-.sk-photo-item img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s cubic-bezier(.22,.68,0,1.2); }
-.sk-photo-item:hover img { transform: scale(1.06); }
-.sk-photo-hover {
+.lux-photo-item.featured { grid-column: span 2; grid-row: span 2; }
+.lux-photo-item.selected { border-color: var(--gold); }
+.lux-photo-item img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s cubic-bezier(.22,.68,0,1.2); }
+.lux-photo-item:hover img { transform: scale(1.05); }
+.lux-photo-hover {
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, transparent 35%, rgba(49,35,26,0.42) 100%);
+  background: linear-gradient(180deg, transparent 40%, rgba(28,15,20,0.38) 100%);
   opacity: 0; transition: opacity .3s;
-  display: flex; align-items: flex-end; justify-content: flex-end; padding: 9px;
+  display: flex; align-items: flex-end; justify-content: flex-end; padding: 8px;
 }
-.sk-photo-item:hover .sk-photo-hover { opacity: 1; }
-.sk-photo-view-icon {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: rgba(255,255,255,0.22); backdrop-filter: blur(8px);
-  border: 0.5px solid rgba(255,255,255,0.45);
+.lux-photo-item:hover .lux-photo-hover { opacity: 1; }
+.lux-photo-view-icon {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(255,255,255,0.22); backdrop-filter: blur(6px);
+  border: 0.5px solid rgba(255,255,255,0.4);
   display: flex; align-items: center; justify-content: center;
 }
-.sk-select-check {
-  position: absolute; top: 8px; left: 8px;
+.lux-select-check {
+  position: absolute; top: 7px; left: 7px;
   width: 20px; height: 20px; border-radius: 50%;
-  background: rgba(255,255,255,0.92); border: 1.5px solid var(--sakura-pink);
+  background: rgba(255,255,255,0.9); border: 1.5px solid var(--gold);
   display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: .2s; pointer-events: none;
 }
-.sk-selection-mode .sk-select-check,
-.sk-photo-item:hover .sk-select-check { opacity: 1; }
-.sk-photo-item.selected .sk-select-check {
-  opacity: 1; background: var(--japan-red); border-color: var(--japan-red);
-}
+.lux-selection-mode .lux-select-check,
+.lux-photo-item:hover .lux-select-check { opacity: 1; }
+.lux-photo-item.selected .lux-select-check { opacity: 1; background: var(--gold); border-color: var(--gold); }
 
-.sk-no-photos { grid-column: 1/-1; padding: 60px 0; text-align: center; }
-.sk-no-photos-ring {
-  width: 52px; height: 52px; border-radius: 50%;
-  border: 1px solid var(--sakura-30);
+.lux-no-photos { grid-column: 1/-1; padding: 52px 0; text-align: center; }
+.lux-no-photos-ring {
+  width: 50px; height: 50px; border-radius: 50%;
+  border: 0.5px solid var(--pink-border);
   display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 16px;
-  background: var(--sakura-10);
+  margin: 0 auto 14px;
+  background: rgba(196,116,142,0.07);
 }
-.sk-no-photos-txt {
+.lux-no-photos-txt {
   font-family: var(--font-display); font-style: italic;
-  font-size: clamp(17px, 3.8vw, 20px); color: var(--charcoal-55);
+  font-size: clamp(16px, 3.5vw, 19px); color: var(--ink-60);
 }
-.sk-no-photos-hint {
+.lux-no-photos-hint {
   font-family: var(--font-body);
-  font-size: 12px; font-weight: 400;
-  color: var(--charcoal-40); margin-top: 7px;
+  font-size: 13px; font-weight: 400;
+  color: var(--ink-40); margin-top: 6px;
 }
-.sk-view-all-wrap { text-align: center; margin-top: 24px; }
-.sk-btn-view-all {
-  font-family: var(--font-body); font-size: 11px; font-weight: 600;
-  letter-spacing: 0.14em; text-transform: uppercase;
-  padding: 11px 36px; background: transparent;
-  border: 1px solid var(--sakura-30); color: var(--charcoal-55);
-  cursor: pointer; transition: .22s; border-radius: 0;
+.lux-view-all-wrap { text-align: center; margin-top: 18px; }
+.lux-btn-view-all {
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 10px 28px; background: rgba(196,116,142,0.07);
+  border: 0.5px solid var(--pink-border); color: var(--ink-60);
+  cursor: pointer; transition: .22s; border-radius: 5px;
 }
-.sk-btn-view-all:hover {
-  color: var(--japan-red); border-color: var(--sakura-pink);
-  background: var(--sakura-10);
-}
+.lux-btn-view-all:hover { color: var(--ink); border-color: var(--pink-dark); background: rgba(196,116,142,0.13); }
 
-/* ── FOOTER ───────────────────────────────────────── */
-.sk-footer {
-  margin-top: 100px; padding-top: 40px;
-  border-top: 1px solid var(--sakura-18);
-  display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 12px;
+/* ── FOOTER ──────────────────────────────────────── */
+.lux-footer {
+  text-align: center; margin-top: 72px; padding-top: 28px;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
 }
-.sk-footer-names {
+.lux-footer-names {
   font-family: var(--font-display); font-style: italic; font-weight: 300;
-  font-size: clamp(14px, 3vw, 17px); color: var(--charcoal-40); letter-spacing: 0.06em;
-}
-.sk-footer-gem {
-  width: 5px; height: 5px;
-  background: var(--sakura-pink); transform: rotate(45deg);
+  font-size: clamp(13px, 3vw, 15px); color: var(--ink-60); letter-spacing: 0.06em;
 }
 
-/* ── LIGHTBOX ─────────────────────────────────────── */
-.sk-lightbox {
+/* ── LIGHTBOX ────────────────────────────────────── */
+.lux-lightbox {
   position: fixed; inset: 0; z-index: 1000;
-  background: rgba(20,8,12,0.97);
+  background: rgba(10,4,7,0.96);
   display: none; align-items: center; justify-content: center; flex-direction: column;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(4px);
 }
-.sk-lightbox.open { display: flex; animation: fadeIn .3s ease both; }
-.sk-lb-close {
-  position: absolute; top: 20px; right: 22px;
-  width: 38px; height: 38px;
-  background: rgba(255,183,197,0.10); border: 0.5px solid rgba(255,183,197,0.22);
-  color: rgba(255,183,197,0.7); font-size: 15px; cursor: pointer; transition: all .2s;
-  display: flex; align-items: center; justify-content: center; border-radius: 0;
+.lux-lightbox.open { display: flex; animation: fadeIn .3s ease both; }
+.lux-lb-close {
+  position: absolute; top: 18px; right: 20px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.08); border: 0.5px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.65); font-size: 15px; cursor: pointer; transition: all .2s;
+  display: flex; align-items: center; justify-content: center;
 }
-.sk-lb-close:hover { background: rgba(255,183,197,0.18); color: var(--sakura-pink); }
-.sk-lb-nav {
+.lux-lb-close:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.lux-lb-nav {
   position: absolute; top: 50%; transform: translateY(-50%);
-  width: 44px; height: 44px; border-radius: 0;
-  background: transparent; border: 0.5px solid rgba(255,183,197,0.18);
-  color: rgba(255,183,197,0.52); font-size: 24px;
+  width: 42px; height: 42px; border-radius: 50%;
+  background: transparent; border: 0.5px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.5); font-size: 22px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: all .2s;
 }
-.sk-lb-nav:hover {
-  background: rgba(255,183,197,0.08); color: var(--sakura-pink);
-  border-color: rgba(255,183,197,0.45);
-}
-.sk-lb-prev { left: 14px; }
-.sk-lb-next { right: 14px; }
-.sk-lb-img-wrap {
-  max-width: 92vw; max-height: 78vh;
-  display: flex; align-items: center; justify-content: center;
-}
-.sk-lb-img {
-  max-width: 100%; max-height: 100%; object-fit: contain;
-  transition: transform .38s cubic-bezier(.22,.68,0,1.2);
-}
-.sk-lb-img.zoomed { transform: scale(2.2); }
-.sk-lb-bottom {
-  position: absolute; bottom: 22px;
-  display: flex; gap: 12px; align-items: center;
-}
-.sk-lb-counter {
+.lux-lb-nav:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.4); }
+.lux-lb-prev { left: 12px; }
+.lux-lb-next { right: 12px; }
+.lux-lb-img-wrap { max-width: 92vw; max-height: 78vh; display: flex; align-items: center; justify-content: center; }
+.lux-lb-img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform .35s cubic-bezier(.22,.68,0,1.2); border-radius: 2px; }
+.lux-lb-img.zoomed { transform: scale(2.2); }
+.lux-lb-bottom { position: absolute; bottom: 20px; display: flex; gap: 10px; align-items: center; }
+.lux-lb-counter {
   font-family: var(--font-body);
-  font-size: 12px; font-weight: 400; letter-spacing: 0.12em;
-  text-transform: uppercase; color: rgba(255,183,197,0.38);
+  font-size: 13px; font-weight: 400; letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgba(255,255,255,0.38);
 }
-.sk-lb-zoom {
-  background: transparent; border: 0.5px solid rgba(255,183,197,0.20);
-  color: rgba(255,183,197,0.52);
-  font-family: var(--font-body); font-size: 11px; font-weight: 500;
-  letter-spacing: 0.12em; text-transform: uppercase;
-  padding: 8px 20px; cursor: pointer; transition: all .2s; border-radius: 0;
+.lux-lb-zoom {
+  background: transparent; border: 0.5px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.48);
+  font-family: var(--font-body); font-size: 13px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 8px 18px; cursor: pointer; transition: all .2s; border-radius: 2px;
 }
-.sk-lb-zoom:hover { color: var(--sakura-pink); border-color: rgba(255,183,197,0.5); }
+.lux-lb-zoom:hover { color: #fff; border-color: rgba(255,255,255,0.5); }
 `;
 
 const MOCK_PHOTOS = [
@@ -696,20 +533,24 @@ const MOCK_PHOTOS = [
 
 function SectionDivider({ label }) {
   return (
-    <div className="sk-div">
-      <span className="sk-div-gem" />
-      <span className="sk-div-label">{label}</span>
-      <div className="sk-div-rule" />
+    <div className="lux-div">
+      <div className="lux-div-rule" />
+      <div className="lux-div-gem" />
+      <span className="lux-div-label">{label}</span>
+      <div className="lux-div-gem" />
+      <div className="lux-div-rule" />
     </div>
   );
 }
 
 function InnerDivider({ label }) {
   return (
-    <div className="sk-inner-div">
-      <span className="sk-inner-gem" />
-      <span className="sk-inner-label">{label}</span>
-      <div className="sk-inner-rule" />
+    <div className="lux-inner-div">
+      <div className="lux-inner-rule" />
+      <div className="lux-inner-gem" />
+      <span className="lux-inner-label">{label}</span>
+      <div className="lux-inner-gem" />
+      <div className="lux-inner-rule" />
     </div>
   );
 }
@@ -724,9 +565,9 @@ export default function WeddingGallery() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (!document.getElementById("sk-css")) {
+    if (!document.getElementById("lux-css")) {
       const s = document.createElement("style");
-      s.id = "sk-css"; s.textContent = SAKURA_CSS;
+      s.id = "lux-css"; s.textContent = LUXURY_CSS;
       document.head.appendChild(s);
     }
   }, []);
@@ -781,107 +622,96 @@ export default function WeddingGallery() {
 
   return (
     <>
-      {/* Ambient petals */}
-      <div className="sk-petals" aria-hidden="true">
-        {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="sk-petal" />)}
-      </div>
-
-      {/* Kakejiku scroll ribbon */}
-      <div className="sk-ribbon" aria-hidden="true" />
-
-      <div className="sk-page">
+      <div className="lux-page">
 
         {/* HERO */}
-        <div className="sk-hero">
-          <div className="sk-eyebrow">
-            <div className="sk-eyebrow-gem" />
-            <span className="sk-eyebrow-text">Wedding Gallery</span>
-          </div>
-
-          <div className="sk-name-block">
-            <span className="sk-name-primary">Claudine</span>
-            <div className="sk-connector-row">
-              <div className="sk-amp-pill">
-                <span className="sk-amp-glyph">&amp;</span>
-              </div>
-              <div className="sk-connector-line" />
+        <div className="lux-hero">
+          <div className="lux-pretitle">Wedding Gallery</div>
+          <div className="lux-names">
+            <span className="lux-name">Claudine</span>
+            <div className="lux-amp-row">
+              <div className="lux-amp-rule l" />
+              <span className="lux-amp">&amp;</span>
+              <div className="lux-amp-rule r" />
             </div>
-            <span className="sk-name-secondary">Mark</span>
+            <span className="lux-name">Mark</span>
           </div>
-
-          <div className="sk-date-strip">
-            <div className="sk-date-rule" />
-            <span className="sk-date-txt">Forever begins · 2026</span>
+          <div className="lux-date-row">
+            <div className="lux-pip" />
+            <span className="lux-date-txt">Forever begins · 2026</span>
+            <div className="lux-pip" />
           </div>
         </div>
 
-        {/* VERSE */}
-        <div className="sk-verse">
-          <p className="sk-verse-body">
+        {/* INVITATION TEXT — plain, no card */}
+        <div className="lux-invite-plain">
+          <p className="lux-invite-body">
             Capture the kilig moments, tawanan, iyakan,<br />
             and every beautiful memory we've made together.<br />
             Don't forget to tag us and use our hashtag:
           </p>
-          <div className="sk-hashtag-block">
-            <span className="sk-hashtag">
-              <span className="sk-ht-gold">#Forever</span>
-              <span className="sk-ht-red">MARK</span>
-              <span className="sk-ht-gold">edfor</span>
-              <span className="sk-ht-red">CLAUD</span>
+          <div className="lux-hashtag-wrap">
+            <span className="lux-hashtag">
+              <span className="lux-ht-gold">#Forever</span>
+              <span className="lux-ht-ink">MARK</span>
+              <span className="lux-ht-gold">edfor</span>
+              <span className="lux-ht-ink">CLAUD</span>
             </span>
           </div>
-          <div className="sk-cta-nudge">Got the perfect shot? Upload it below</div>
+          <div className="lux-cta-hint">Got the perfect shot? Upload it below</div>
+          <span className="lux-arrow" />
         </div>
 
         {/* VIDEO MOMENTS */}
         <SectionDivider label="Video Moments" />
-        <div className="sk-stories-head">
+        <div className="lux-stories-head">
           <div>
-            <div className="sk-stories-title">Moments in Motion</div>
-            <div className="sk-stories-sub">Swipe to watch · tap to play</div>
+            <div className="lux-stories-title">Moments in Motion</div>
+            <div className="lux-stories-sub">Swipe to watch · tap to play</div>
           </div>
-          <button className="sk-btn-ghost">+ Add Video</button>
+          <button className="lux-btn-ghost">+ Add Video</button>
         </div>
-        <div className="sk-stories-strip">
-          <div className="sk-story-add" onClick={() => {}}>
-            <div className="sk-story-add-ring">
+        <div className="lux-stories-strip">
+          <div className="lux-story-add" onClick={() => {}}>
+            <div className="lux-story-add-ring">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M9 4v10M4 9h10" stroke="#bc3f2e" strokeWidth="1.4" strokeLinecap="round" />
+                <path d="M9 4v10M4 9h10" stroke="#b8944f" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </div>
-            <span className="sk-story-add-label">Add<br />Video</span>
+            <span className="lux-story-add-label">Add<br />Video</span>
           </div>
           {[0, 1, 2].map(i => (
-            <div className="sk-story-ph" key={i}>
-              <div className="sk-story-ph-inner">
-                <div className="sk-story-ph-icon">
+            <div className="lux-story-ph" key={i}>
+              <div className="lux-story-ph-inner">
+                <div className="lux-story-ph-icon">
                   <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                    <rect x="1.5" y="3.5" width="13" height="9" rx="1.2" stroke="#ffb7c5" strokeWidth="0.9" />
-                    <path d="M6 6.5l4.5 1.5L6 9.5V6.5z" stroke="#ffb7c5" strokeWidth="0.9" />
+                    <rect x="1.5" y="3.5" width="13" height="9" rx="1.2" stroke="#c4748e" strokeWidth="0.9" />
+                    <path d="M6 6.5l4.5 1.5L6 9.5V6.5z" stroke="#c4748e" strokeWidth="0.9" />
                   </svg>
                 </div>
-                <div className="sk-story-ph-txt">Coming<br />soon</div>
+                <div className="lux-story-ph-txt">Coming<br />soon</div>
               </div>
+              <div className="lux-shimmer" />
             </div>
           ))}
         </div>
 
-        {/* UPLOAD */}
+        {/* UPLOAD — simple button only, no drop container */}
         <SectionDivider label="Share Your Photos" />
-        <div className="sk-upload">
+        <div className="lux-upload-simple">
           <button
-            className="sk-btn-upload"
+            className="lux-btn-upload"
             onClick={() => fileInputRef.current?.click()}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M12 16V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M9 12l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M5 19h14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-              <path d="M7 10.5A5 5 0 0 1 17 10.5" stroke="currentColor" strokeOpacity="0.55" strokeWidth="1" strokeLinecap="round"/>
+              <path d="M12 16V9" stroke="#fce8ef" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M9 12l3-3 3 3" stroke="#fce8ef" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 19h14" stroke="#fce8ef" strokeWidth="1.2" strokeLinecap="round"/>
+              <path d="M7 10.5A5 5 0 0 1 17 10.5" stroke="rgba(252,232,239,0.6)" strokeWidth="1" strokeLinecap="round"/>
             </svg>
             Upload Photos
           </button>
-          <span className="sk-upload-hint">JPEG · PNG · WEBP · Up to 5 MB · Max 20 photos</span>
+          <span className="lux-upload-hint">JPEG · PNG · WEBP · Up to 5 MB · Max 20 photos</span>
           <input
             ref={fileInputRef} type="file" multiple accept="image/*"
             style={{ display: "none" }}
@@ -889,15 +719,15 @@ export default function WeddingGallery() {
           />
 
           {previews.length > 0 && (
-            <div className="sk-preview-sec">
-              <div className="sk-preview-label">
+            <div className="lux-preview-sec">
+              <div className="lux-preview-label">
                 {previews.length} photo{previews.length !== 1 ? "s" : ""} ready to send
               </div>
-              <div className="sk-preview-grid">
+              <div className="lux-preview-grid">
                 {previews.map(p => (
-                  <div className="sk-preview-item" key={p.id}>
+                  <div className="lux-preview-item" key={p.id}>
                     <img src={p.url} alt="preview" />
-                    <button className="sk-preview-remove" onClick={() => removePreview(p.id)}>✕</button>
+                    <button className="lux-preview-remove" onClick={() => removePreview(p.id)}>✕</button>
                   </div>
                 ))}
               </div>
@@ -905,39 +735,42 @@ export default function WeddingGallery() {
           )}
 
           {previews.length > 0 && (
-            <div className="sk-send-bar">
-              <button className="sk-btn-send">Send to Gallery</button>
-              <div className="sk-send-hint">
+            <div className="lux-send-bar">
+              <button className="lux-btn-send">Send to Gallery</button>
+              <div className="lux-send-hint">
                 {previews.length} photo{previews.length !== 1 ? "s" : ""} will be shared with all guests
               </div>
             </div>
           )}
         </div>
 
-        {/* GALLERY */}
+        {/* GALLERY — inside white card/widget */}
         <InnerDivider label="Shared Memories" />
 
-        <div className="sk-card">
-          <div className="sk-gallery-panel">
-            <div className="sk-gallery-bar">
+        <div className="lux-card">
+          <div className="lux-corner tl" /><div className="lux-corner tr" />
+          <div className="lux-corner bl" /><div className="lux-corner br" />
+
+          <div className="lux-gallery-panel">
+            <div className="lux-gallery-bar">
               <div>
-                <div className="sk-gallery-title">Photo Gallery</div>
-                <div className="sk-gallery-sub">Every frame, forever</div>
+                <div className="lux-gallery-title">Photo Gallery</div>
+                <div className="lux-gallery-sub">Every frame, forever</div>
               </div>
-              <div className="sk-gallery-actions">
+              <div className="lux-gallery-actions">
                 <button
-                  className={`sk-btn-action${selectMode ? " active" : ""}`}
+                  className={`lux-btn-action${selectMode ? " active" : ""}`}
                   onClick={toggleSelectMode}
                 >
                   {selectMode ? "Done" : "Select"}
                 </button>
                 {selectMode && photos.length > 0 && (
-                  <button className="sk-btn-action" onClick={selectAll}>
+                  <button className="lux-btn-action" onClick={selectAll}>
                     {selected.size === photos.length ? "Deselect All" : "Select All"}
                   </button>
                 )}
                 {selected.size > 0 && (
-                  <button className="sk-btn-action dl">
+                  <button className="lux-btn-action dl">
                     Download ({selected.size})
                   </button>
                 )}
@@ -945,36 +778,36 @@ export default function WeddingGallery() {
             </div>
 
             {photos.length === 0 ? (
-              <div className="sk-no-photos">
-                <div className="sk-no-photos-ring">
+              <div className="lux-no-photos">
+                <div className="lux-no-photos-ring">
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <rect x="1.5" y="3.5" width="17" height="13" rx="1.8" stroke="#ffb7c5" strokeWidth="0.75" />
-                    <circle cx="7" cy="8.5" r="1.8" stroke="#ffb7c5" strokeWidth="0.75" />
-                    <path d="M1.5 13.5l4.5-3.5 3.5 3.5 4-5L18.5 14" stroke="#ffb7c5" strokeWidth="0.75" strokeLinecap="round" />
+                    <rect x="1.5" y="3.5" width="17" height="13" rx="1.8" stroke="#c4748e" strokeWidth="0.75" />
+                    <circle cx="7" cy="8.5" r="1.8" stroke="#c4748e" strokeWidth="0.75" />
+                    <path d="M1.5 13.5l4.5-3.5 3.5 3.5 4-5L18.5 14" stroke="#c4748e" strokeWidth="0.75" strokeLinecap="round" />
                   </svg>
                 </div>
-                <div className="sk-no-photos-txt">No photos yet</div>
-                <div className="sk-no-photos-hint">Be the first to share a memory</div>
+                <div className="lux-no-photos-txt">No photos yet</div>
+                <div className="lux-no-photos-hint">Be the first to share a memory</div>
               </div>
             ) : (
               <>
-                <div className={`sk-photo-grid${selectMode ? " sk-selection-mode" : ""}`}>
+                <div className={`lux-photo-grid${selectMode ? " lux-selection-mode" : ""}`}>
                   {visiblePhotos.map((photo, idx) => (
                     <div
                       key={photo.id}
-                      className={`sk-photo-item${idx === 0 ? " featured" : ""}${selected.has(idx) ? " selected" : ""}`}
+                      className={`lux-photo-item${idx === 0 ? " featured" : ""}${selected.has(idx) ? " selected" : ""}`}
                       onClick={() => openLightbox(idx)}
                     >
                       <img src={photo.url} alt="wedding photo" loading="lazy" />
-                      <div className="sk-photo-hover">
-                        <div className="sk-photo-view-icon">
+                      <div className="lux-photo-hover">
+                        <div className="lux-photo-view-icon">
                           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                             <circle cx="5.5" cy="5.5" r="3.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1" />
                             <path d="M8 8l2.5 2.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1" strokeLinecap="round" />
                           </svg>
                         </div>
                       </div>
-                      <div className="sk-select-check">
+                      <div className="lux-select-check">
                         {selected.has(idx) && (
                           <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
                             <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -984,8 +817,8 @@ export default function WeddingGallery() {
                     </div>
                   ))}
                 </div>
-                <div className="sk-view-all-wrap">
-                  <button className="sk-btn-view-all" onClick={() => setShowAll(v => !v)}>
+                <div className="lux-view-all-wrap">
+                  <button className="lux-btn-view-all" onClick={() => setShowAll(v => !v)}>
                     {showAll ? "Show Less" : `View All · ${photos.length} Photos`}
                   </button>
                 </div>
@@ -995,33 +828,43 @@ export default function WeddingGallery() {
         </div>
 
         {/* FOOTER */}
-        <footer className="sk-footer">
-          <div className="sk-footer-names">Claudine et Mark · 2026</div>
-          <div className="sk-footer-gem" />
+        <footer className="lux-footer">
+          <svg width="180" height="14" viewBox="0 0 180 14">
+            <line x1="0" y1="7" x2="74" y2="7" stroke="#b8944f" strokeWidth="0.5" />
+            <rect x="82" y="3" width="8" height="8" fill="none" stroke="#b8944f" strokeWidth="0.5" transform="rotate(45 86 7)" />
+            <circle cx="86" cy="7" r="1.6" fill="#b8944f" />
+            <line x1="98" y1="7" x2="180" y2="7" stroke="#b8944f" strokeWidth="0.5" />
+          </svg>
+          <div className="lux-footer-names">Claudine &amp; Mark · 2026</div>
+          <svg width="110" height="10" viewBox="0 0 110 10">
+            <line x1="0" y1="5" x2="44" y2="5" stroke="rgba(184,148,79,0.3)" strokeWidth="0.5" />
+            <circle cx="55" cy="5" r="1.8" fill="none" stroke="#b8944f" strokeWidth="0.5" />
+            <line x1="66" y1="5" x2="110" y2="5" stroke="rgba(184,148,79,0.3)" strokeWidth="0.5" />
+          </svg>
         </footer>
       </div>
 
       {/* LIGHTBOX */}
-      <div className={`sk-lightbox${lightbox.open ? " open" : ""}`}>
-        <button className="sk-lb-close" onClick={() => setLightbox(l => ({ ...l, open: false, zoomed: false }))}>
+      <div className={`lux-lightbox${lightbox.open ? " open" : ""}`}>
+        <button className="lux-lb-close" onClick={() => setLightbox(l => ({ ...l, open: false, zoomed: false }))}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
         </button>
-        <button className="sk-lb-nav sk-lb-prev" onClick={() => navPhoto(-1)}>‹</button>
-        <button className="sk-lb-nav sk-lb-next" onClick={() => navPhoto(1)}>›</button>
-        <div className="sk-lb-img-wrap">
+        <button className="lux-lb-nav lux-lb-prev" onClick={() => navPhoto(-1)}>‹</button>
+        <button className="lux-lb-nav lux-lb-next" onClick={() => navPhoto(1)}>›</button>
+        <div className="lux-lb-img-wrap">
           {lightbox.open && currentImg && (
             <img
-              className={`sk-lb-img${lightbox.zoomed ? " zoomed" : ""}`}
+              className={`lux-lb-img${lightbox.zoomed ? " zoomed" : ""}`}
               src={currentImg.url} alt="wedding photo"
             />
           )}
         </div>
-        <div className="sk-lb-bottom">
-          <span className="sk-lb-counter">{lightbox.idx + 1} / {photos.length}</span>
+        <div className="lux-lb-bottom">
+          <span className="lux-lb-counter">{lightbox.idx + 1} / {photos.length}</span>
           <button
-            className="sk-lb-zoom"
+            className="lux-lb-zoom"
             onClick={() => setLightbox(l => ({ ...l, zoomed: !l.zoomed }))}
           >
             {lightbox.zoomed ? "Zoom Out" : "Zoom In"}
