@@ -868,7 +868,7 @@ footer,
 /* Gold diamond ornament above footer content */
 footer::before,
 .footer::before {
-  content      : '\25C6' !important;  /* ◆ */
+  content      : '\\25C6' !important;  /* ◆ */
   display      : block !important;
   font-size    : 0.55rem !important;
   color        : var(--pf-gold) !important;
