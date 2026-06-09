@@ -1,7 +1,28 @@
-import { useState, useEffect, useRef } from "react";
+/**
+ * apply-sakura-overhaul.mjs
+ * Complete design overhaul — Sakura Pink × Gold Leaf × Japan Red
+ * Run: node apply-sakura-overhaul.mjs
+ */
+
+import { writeFileSync, readFileSync, existsSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// ── Target file ────────────────────────────────────────────────────────────
+const TARGET = join(__dirname, "src", "WeddingGallery.js");
+
+if (!existsSync(TARGET)) {
+  console.error("❌  src/WeddingGallery.js not found. Run this script from the project root.");
+  process.exit(1);
+}
+
+// ── The complete new WeddingGallery.js ─────────────────────────────────────
+const NEW_CONTENT = `import { useState, useEffect, useRef } from "react";
 
 /* SAKURA_OVERHAUL_V1 */
-const SAKURA_CSS = `
+const SAKURA_CSS = \`
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 :root {
@@ -225,7 +246,7 @@ body {
   animation: riseIn 1.1s cubic-bezier(.16,.84,.44,1) 0.1s both;
 }
 .sk-verse::before {
-  content: '“';
+  content: '\u201C';
   position: absolute; top: -8px; left: 12px;
   font-family: var(--font-display);
   font-size: 72px; font-style: italic; font-weight: 300;
@@ -681,7 +702,7 @@ body {
   padding: 8px 20px; cursor: pointer; transition: all .2s; border-radius: 0;
 }
 .sk-lb-zoom:hover { color: var(--sakura-pink); border-color: rgba(255,183,197,0.5); }
-`;
+\`;
 
 const MOCK_PHOTOS = [
   { id: 1, url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=85", name: "ceremony.jpg" },
@@ -926,7 +947,7 @@ export default function WeddingGallery() {
               </div>
               <div className="sk-gallery-actions">
                 <button
-                  className={`sk-btn-action${selectMode ? " active" : ""}`}
+                  className={\`sk-btn-action\${selectMode ? " active" : ""}\`}
                   onClick={toggleSelectMode}
                 >
                   {selectMode ? "Done" : "Select"}
@@ -958,11 +979,11 @@ export default function WeddingGallery() {
               </div>
             ) : (
               <>
-                <div className={`sk-photo-grid${selectMode ? " sk-selection-mode" : ""}`}>
+                <div className={\`sk-photo-grid\${selectMode ? " sk-selection-mode" : ""}\`}>
                   {visiblePhotos.map((photo, idx) => (
                     <div
                       key={photo.id}
-                      className={`sk-photo-item${idx === 0 ? " featured" : ""}${selected.has(idx) ? " selected" : ""}`}
+                      className={\`sk-photo-item\${idx === 0 ? " featured" : ""}\${selected.has(idx) ? " selected" : ""}\`}
                       onClick={() => openLightbox(idx)}
                     >
                       <img src={photo.url} alt="wedding photo" loading="lazy" />
@@ -986,7 +1007,7 @@ export default function WeddingGallery() {
                 </div>
                 <div className="sk-view-all-wrap">
                   <button className="sk-btn-view-all" onClick={() => setShowAll(v => !v)}>
-                    {showAll ? "Show Less" : `View All · ${photos.length} Photos`}
+                    {showAll ? "Show Less" : \`View All · \${photos.length} Photos\`}
                   </button>
                 </div>
               </>
@@ -1002,7 +1023,7 @@ export default function WeddingGallery() {
       </div>
 
       {/* LIGHTBOX */}
-      <div className={`sk-lightbox${lightbox.open ? " open" : ""}`}>
+      <div className={\`sk-lightbox\${lightbox.open ? " open" : ""}\`}>
         <button className="sk-lb-close" onClick={() => setLightbox(l => ({ ...l, open: false, zoomed: false }))}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -1013,7 +1034,7 @@ export default function WeddingGallery() {
         <div className="sk-lb-img-wrap">
           {lightbox.open && currentImg && (
             <img
-              className={`sk-lb-img${lightbox.zoomed ? " zoomed" : ""}`}
+              className={\`sk-lb-img\${lightbox.zoomed ? " zoomed" : ""}\`}
               src={currentImg.url} alt="wedding photo"
             />
           )}
@@ -1031,3 +1052,10 @@ export default function WeddingGallery() {
     </>
   );
 }
+`;
+
+// ── Write it ───────────────────────────────────────────────────────────────
+writeFileSync(TARGET, NEW_CONTENT, "utf8");
+console.log("✅  WeddingGallery.js has been completely overhauled.");
+console.log("    Design: Sakura Pink × Gold Leaf × Japan Red × Cormorant Garamond");
+console.log("    Run:  npm start   to preview the changes.");
