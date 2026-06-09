@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
 /* REDESIGN_JOURNAL_V1_APPLIED */
-/* BUGFIX_V1_APPLIED */
 const LUXURY_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400;1,9..144,500&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap');
 
@@ -75,19 +74,14 @@ body {
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
-  padding: 0 20px 100px 28px;
+  padding: 0 20px 100px;
+  border-left: 2px solid var(--sage);
 }
 @media (min-width: 640px) {
-  .lux-page { padding: 0 36px 100px 44px; }
+  .lux-page { padding: 0 36px 100px; }
 }
-body::before {
-  content: '';
-  position: fixed;
-  left: 0; top: 0;
-  width: 3px; height: 100vh;
-  background: linear-gradient(180deg, var(--sage) 0%, var(--sage-mid) 100%);
-  z-index: 9999;
-  pointer-events: none;
+@media (max-width: 480px) {
+  .lux-page { border-left: none; border-top: 2px solid var(--sage); }
 }
 
 /* ── HERO ────────────────────────────────────────── */
@@ -171,8 +165,8 @@ body::before {
   line-height: 1.1; letter-spacing: 0.01em;
   display: inline;
 }
-.lux-ht-gold { color: var(--ink-40); }   /* #Forever, edfor — recede */
-.lux-ht-ink  { color: var(--sage); }        /* MARK, CLAUD — pop    */
+.lux-ht-gold { color: var(--sage); }
+.lux-ht-ink  { color: var(--gold); }
 .lux-cta-hint {
   margin-top: 20px;
   font-family: var(--font-body);
@@ -287,8 +281,8 @@ body::before {
 }
 .lux-story-ph-icon {
   width: 34px; height: 34px; border-radius: 50%;
-  background: var(--sage-pale);
-  border: 0.5px dashed var(--sage-border);
+  background: rgba(196,116,142,0.08);
+  border: 0.5px dashed var(--pink-dark);
   display: flex; align-items: center; justify-content: center;
 }
 .lux-story-ph-txt {
@@ -305,7 +299,7 @@ body::before {
 
 /* ── UPLOAD SECTION — simple button, no drop container ── */
 .lux-upload-simple {
-  display: flex; flex-direction: column; align-items: flex-start;
+  display: flex; flex-direction: column; align-items: center;
   gap: 14px;
   padding: 8px 0 4px;
   animation: fadeUp 1s cubic-bezier(.22,.68,0,1.2) 0.1s both;
@@ -665,6 +659,7 @@ export default function WeddingGallery() {
           <div className="lux-date-row">
             <div className="lux-pip" />
             <span className="lux-date-txt">Forever begins · 2026</span>
+            <div className="lux-pip" />
           </div>
         </div>
 
@@ -770,7 +765,7 @@ export default function WeddingGallery() {
         </div>
 
         {/* GALLERY — inside white card/widget */}
-        <SectionDivider label="Shared Memories" />
+        <InnerDivider label="Shared Memories" />
 
         <div className="lux-card">
           <div className="lux-gallery-panel">
