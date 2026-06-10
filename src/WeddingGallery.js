@@ -757,30 +757,6 @@ const MOCK_PHOTOS = [
   { id: 8, url: "https://images.unsplash.com/photo-1591604466107-ec97de577aff?w=600&q=85", name: "venue.jpg" },
 ];
 
-function SectionDivider({ label }) {
-  return (
-    <div className="lux-div">
-      <div className="lux-div-rule" />
-      <div className="lux-div-gem" />
-      <span className="lux-div-label">{label}</span>
-      <div className="lux-div-gem" />
-      <div className="lux-div-rule" />
-    </div>
-  );
-}
-
-function InnerDivider({ label }) {
-  return (
-    <div className="lux-inner-div">
-      <div className="lux-inner-rule" />
-      <div className="lux-inner-gem" />
-      <span className="lux-inner-label">{label}</span>
-      <div className="lux-inner-gem" />
-      <div className="lux-inner-rule" />
-    </div>
-  );
-}
-
 export default function WeddingGallery() {
   const [photos] = useState(MOCK_PHOTOS);
   const [previews, setPreviews] = useState([]);
@@ -989,7 +965,7 @@ export default function WeddingGallery() {
               <div className="lux-preview-grid">
                 {previews.map(p => (
                   <div className="lux-preview-item" key={p.id}>
-                    <img src={p.url} alt="preview" />
+                    <img src={p.url} alt="" />
                     <button className="lux-preview-remove" onClick={() => removePreview(p.id)}>✕</button>
                   </div>
                 ))}
@@ -1070,7 +1046,7 @@ export default function WeddingGallery() {
                       className={`lux-photo-item${idx === 0 ? " featured" : ""}${selected.has(idx) ? " selected" : ""}`}
                       onClick={() => openLightbox(idx)}
                     >
-                      <img src={photo.url} alt="wedding photo" loading="lazy" />
+                      <img src={photo.url} alt="" loading="lazy" />
                       <div className="lux-photo-hover">
                         <div className="lux-photo-view-icon">
                           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -1129,7 +1105,7 @@ export default function WeddingGallery() {
           {lightbox.open && currentImg && (
             <img
               className={`lux-lb-img${lightbox.zoomed ? " zoomed" : ""}`}
-              src={currentImg.url} alt="wedding photo"
+              src={currentImg.url} alt=""
             />
           )}
         </div>

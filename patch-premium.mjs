@@ -1,18 +1,12 @@
 /**
- * patch-premium.mjs
- * Wedding Gallery — "Vellum & Verdigris" design overhaul
+ * patch-premium.mjs  — v3
+ * Wedding Gallery · "Vellum & Verdigris" design overhaul
  *
- * Run from the project root:
+ * Run from project root:
  *   node patch-premium.mjs
  *
- * What this patch does:
- *  1. Rewrites LUXURY_CSS inside WeddingGallery.js with a new premium design system
- *  2. Rewrites the JSX render tree with refined structure and markup
- *  3. Keeps all existing color tokens intact (rose / gold / ink palette)
- *  4. Upgrades typography to Cormorant Infant + DM Serif Display (already available)
- *  5. Replaces generic patterns with distinctive, editorial-grade treatments
- *
- * Safe to run multiple times — it writes an atomic backup before patching.
+ * Idempotent — safe to run on a clean checkout OR on an already-patched file.
+ * Detects CRLF (Windows) automatically and preserves line endings on write.
  */
 
 import fs   from "fs";
@@ -23,31 +17,45 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TARGET    = path.join(__dirname, "src", "WeddingGallery.js");
 const BACKUP    = path.join(__dirname, "src", "WeddingGallery.js.bak");
 
-/* ─── Guard ─────────────────────────────────────────────────────────────── */
 if (!fs.existsSync(TARGET)) {
-  console.error("✗ Could not find src/WeddingGallery.js — are you in the project root?");
+  console.error("✗  Cannot find src/WeddingGallery.js — run from the project root.");
   process.exit(1);
 }
 
-/* ─── Backup ─────────────────────────────────────────────────────────────── */
+// ── Read + normalise ──────────────────────────────────────────────────────
 fs.copyFileSync(TARGET, BACKUP);
-console.log(`✓ Backup written → ${path.relative(__dirname, BACKUP)}`);
+console.log(`✓  Backup → ${path.relative(__dirname, BACKUP)}`);
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   NEW CSS  — "Vellum & Verdigris"
-   Palette: preserved exactly from original tokens
-   Type:    DM Serif Display (hero) · Cormorant Infant (display) · Jost (body)
-   Signature: press-reveal hero animation · editorial 5-col photo grid ·
-              engraved SVG-frame card · flush-left section eyebrows ·
-              filmstrip lightbox scrubber
-══════════════════════════════════════════════════════════════════════════════ */
-const NEW_CSS = `
+const rawBytes = fs.readFileSync(TARGET, "utf8");
+const hasCRLF  = rawBytes.includes("\r\n");
+let   src      = hasCRLF ? rawBytes.replace(/\r\n/g, "\n") : rawBytes;
+console.log(`   Line endings: ${hasCRLF ? "CRLF (Windows)" : "LF (Unix)"}`);
+
+// ── Patch helpers ─────────────────────────────────────────────────────────
+let patchCount = 0;
+function apply(label, oldStr, newStr) {
+  if (!src.includes(oldStr)) {
+    console.log(`   skipped  ${label}  (already applied or not found)`);
+    return;
+  }
+  src = src.replace(oldStr, newStr);
+  patchCount++;
+  console.log(`✓  ${label}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PATCH A — Replace LUXURY_CSS block with new design system
+//  (Detects the current CSS via font name; skips if already new design)
+// ═══════════════════════════════════════════════════════════════════════════
+const needsCSSPatch = !src.includes("DM+Serif+Display");
+
+if (needsCSSPatch) {
+  const NEW_CSS = `
 /* ── DM Serif Display (hero) · Cormorant Infant (display) · Jost (body) ─── */
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Cormorant+Infant:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500;1,600&family=Jost:wght@200;300;400;500;600&display=swap');
 
 /* ── DESIGN TOKENS ─────────────────────────────────────────────────────── */
 :root {
-  /* Palette — original, unchanged */
   --page-bg:       #fce8ef;
   --page-bg-deep:  #f9d5e2;
   --white:         #ffffff;
@@ -71,12 +79,10 @@ const NEW_CSS = `
   --ink-20:        rgba(28,15,20,0.20);
   --ink-08:        rgba(28,15,20,0.08);
 
-  /* Typography — overhauled */
   --font-hero:    'DM Serif Display', Georgia, serif;
   --font-display: 'Cormorant Infant', Georgia, serif;
   --font-body:    'Jost', system-ui, sans-serif;
 
-  /* Motion */
   --ease-out:       cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-cinematic: cubic-bezier(0.22, 0.68, 0, 1.2);
@@ -96,40 +102,32 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Single-pixel elegant scrollbar */
 ::-webkit-scrollbar { width: 1px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--pink-border); }
 
 /* ── KEYFRAMES ─────────────────────────────────────────────────────────── */
-
-/* Press-reveal: clip from bottom, like ink absorbed into vellum */
 @keyframes pressReveal {
   from { clip-path: inset(0 0 100% 0); opacity: 0.4; }
   to   { clip-path: inset(0 0 0% 0);   opacity: 1; }
 }
-
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.97) translateY(8px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
-
 @keyframes lineExpand {
   from { transform: scaleX(0); transform-origin: left; }
   to   { transform: scaleX(1); transform-origin: left; }
 }
-
 @keyframes shimmer {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }
 }
-
 @keyframes goldRipple {
   0%   { box-shadow: 0 0 0 0 rgba(184,144,74,0.45); }
   70%  { box-shadow: 0 0 0 10px rgba(184,144,74,0); }
@@ -141,8 +139,6 @@ body {
   position: fixed; inset: 0; z-index: 0;
   pointer-events: none; overflow: hidden;
 }
-
-/* Layered radial wash — warmer toward top, deeper rose at bottom edge */
 .lux-bg-canvas::before {
   content: '';
   position: absolute; inset: 0;
@@ -152,8 +148,6 @@ body {
     radial-gradient(ellipse 45% 35% at 5%  55%,  rgba(184,144,74,0.07)  0%, transparent 52%),
     radial-gradient(ellipse 70% 30% at 50% 110%, rgba(196,116,142,0.09) 0%, transparent 50%);
 }
-
-/* Fine grain texture — linen-like, more visible than before */
 .lux-bg-canvas::after {
   content: '';
   position: absolute; inset: 0;
@@ -171,16 +165,12 @@ body {
   margin: 0 auto;
   padding: 0 24px 140px;
 }
-@media (min-width: 640px)  { .lux-page { padding: 0 40px 140px; } }
-@media (min-width: 960px)  { .lux-page { padding: 0 56px 140px; } }
+@media (min-width: 640px) { .lux-page { padding: 0 40px 140px; } }
+@media (min-width: 960px) { .lux-page { padding: 0 56px 140px; } }
 
 /* ── HERO ───────────────────────────────────────────────────────────────── */
-.lux-hero {
-  padding: 96px 0 72px;
-  text-align: center;
-}
+.lux-hero { padding: 96px 0 72px; text-align: center; }
 
-/* Eyebrow — tiny spaced caps, flanked by hairlines that grow outward */
 .lux-pretitle {
   font-family: var(--font-body);
   font-size: 9.5px; font-weight: 500;
@@ -198,7 +188,6 @@ body {
 .lux-pretitle::before { background: linear-gradient(90deg, transparent, var(--gold)); }
 .lux-pretitle::after  { background: linear-gradient(90deg, var(--gold), transparent); }
 
-/* Names — DM Serif Display, press-reveal per name */
 .lux-names { display: flex; flex-direction: column; align-items: center; }
 
 .lux-name {
@@ -208,7 +197,6 @@ body {
   line-height: 0.86; letter-spacing: -0.02em;
   color: var(--ink);
   display: block;
-  /* Ink absorption reveal — first name slightly delayed */
   animation: pressReveal 1.0s var(--ease-press) both;
 }
 .lux-name:first-child { animation-delay: 0.20s; }
@@ -216,10 +204,8 @@ body {
   animation-delay: 0.52s;
   color: transparent;
   -webkit-text-stroke: 1px var(--ink);
-  /* Outline treatment for second name — engraved look */
 }
 
-/* Connector row — date + location typography replacing the ampersand */
 .lux-connector-row {
   display: flex; align-items: center; justify-content: center; gap: 0;
   margin: 20px 0 6px;
@@ -244,11 +230,7 @@ body {
 }
 .lux-connector-dot { width: 3px; height: 3px; background: var(--gold-border); border-radius: 50%; }
 
-/* Date stamp */
-.lux-date-row {
-  margin-top: 22px;
-  animation: fadeIn 1s ease 1.0s both;
-}
+.lux-date-row { margin-top: 22px; animation: fadeIn 1s ease 1.0s both; }
 .lux-date-txt {
   font-family: var(--font-body);
   font-size: 10.5px; font-weight: 400; letter-spacing: 0.32em;
@@ -269,7 +251,6 @@ body {
   line-height: 2.1; letter-spacing: 0.02em;
   color: var(--ink-60);
 }
-
 .lux-hashtag-wrap { margin-top: 28px; }
 .lux-hashtag {
   font-family: var(--font-hero);
@@ -280,7 +261,6 @@ body {
 }
 .lux-ht-gold { color: var(--gold); }
 .lux-ht-ink  { color: var(--ink); }
-
 .lux-cta-hint {
   margin-top: 28px;
   font-family: var(--font-body);
@@ -293,7 +273,7 @@ body {
   background: linear-gradient(180deg, var(--gold-border), transparent);
 }
 
-/* ── SECTION EYEBROW — flush-left editorial label ───────────────────────── */
+/* ── SECTION EYEBROW ────────────────────────────────────────────────────── */
 .lux-eyebrow {
   display: flex; align-items: center; gap: 14px;
   margin: 64px 0 20px;
@@ -309,7 +289,7 @@ body {
   background: linear-gradient(90deg, rgba(196,116,142,0.35), transparent);
 }
 
-/* ── INNER SECTION LABEL — offset, reduced ──────────────────────────────── */
+/* ── INNER SECTION LABEL ────────────────────────────────────────────────── */
 .lux-inner-label-row {
   display: flex; align-items: center; gap: 10px;
   margin: 32px 0 20px;
@@ -350,7 +330,6 @@ body {
 }
 .lux-btn-ghost:hover { background: var(--gold-glow); border-color: var(--gold); }
 
-/* Stories strip */
 .lux-stories-strip {
   display: flex; gap: 10px; overflow-x: auto;
   padding: 4px 2px 18px; scroll-snap-type: x mandatory;
@@ -359,7 +338,6 @@ body {
 .lux-stories-strip::-webkit-scrollbar { height: 1px; }
 .lux-stories-strip::-webkit-scrollbar-thumb { background: var(--gold-border); }
 
-/* Story tiles — now portrait-ratio with heavier border presence */
 .lux-story-add {
   flex-shrink: 0; width: 96px; height: 170px;
   background: linear-gradient(160deg, var(--white-off) 0%, rgba(252,232,239,0.55) 100%);
@@ -424,14 +402,12 @@ body {
   .lux-story-add, .lux-story-ph { width: 112px; height: 196px; }
 }
 
-/* ── UPLOAD SECTION ─────────────────────────────────────────────────────── */
+/* ── UPLOAD ─────────────────────────────────────────────────────────────── */
 .lux-upload-simple {
   display: flex; flex-direction: column; align-items: center;
   gap: 18px; padding: 4px 0;
   animation: fadeUp 1.1s var(--ease-cinematic) 0.08s both;
 }
-
-/* Primary CTA — full-width on mobile, auto on desktop */
 .lux-btn-upload {
   display: inline-flex; align-items: center; gap: 13px;
   font-family: var(--font-body); font-size: 11px; font-weight: 500;
@@ -443,7 +419,6 @@ body {
   box-shadow: 0 8px 28px rgba(28,15,20,0.20), 0 1px 0 rgba(255,255,255,0.07) inset;
   position: relative; overflow: hidden;
 }
-/* Gold sweep on hover — restrained */
 .lux-btn-upload::after {
   content: '';
   position: absolute; top: 0; left: -120%; width: 80%; height: 100%;
@@ -452,14 +427,13 @@ body {
 }
 .lux-btn-upload:hover { transform: translateY(-3px); box-shadow: 0 14px 44px rgba(28,15,20,0.26); }
 .lux-btn-upload:hover::after { left: 140%; }
-
 .lux-upload-hint {
   font-family: var(--font-body);
   font-size: 10.5px; font-weight: 300; letter-spacing: 0.07em;
   color: var(--ink-40);
 }
 
-/* ── PREVIEW SECTION ────────────────────────────────────────────────────── */
+/* ── PREVIEW ────────────────────────────────────────────────────────────── */
 .lux-preview-sec { width: 100%; margin-top: 4px; }
 .lux-preview-label {
   font-family: var(--font-body);
@@ -469,10 +443,7 @@ body {
 .lux-preview-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 5px;
 }
-.lux-preview-item {
-  aspect-ratio: 1; overflow: hidden;
-  position: relative; background: var(--pink-deep);
-}
+.lux-preview-item { aspect-ratio: 1; overflow: hidden; position: relative; background: var(--pink-deep); }
 .lux-preview-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .lux-preview-remove {
   position: absolute; inset: 0; background: rgba(28,15,20,0.50);
@@ -508,7 +479,7 @@ body {
   font-size: 11.5px; font-weight: 300; letter-spacing: 0.05em; color: var(--ink-40);
 }
 
-/* ── GALLERY CARD — engraved SVG frame ──────────────────────────────────── */
+/* ── GALLERY CARD ───────────────────────────────────────────────────────── */
 .lux-card {
   background: var(--white);
   border: 0.5px solid rgba(196,116,142,0.16);
@@ -521,24 +492,17 @@ body {
   position: relative; overflow: hidden;
   animation: scaleIn 1.0s var(--ease-cinematic) 0.14s both;
 }
-
-/* Top-edge gold shimmer */
 .lux-card::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 1px;
   background: linear-gradient(90deg, transparent 0%, var(--gold-pale) 25%, var(--gold-light) 50%, var(--gold-pale) 75%, transparent 100%);
   opacity: 0.75; z-index: 1;
 }
-
-/* Engraved inner-frame: a continuous fine inset rectangle */
-.lux-card-frame {
-  position: absolute; inset: 10px; pointer-events: none; z-index: 2;
-}
+.lux-card-frame { position: absolute; inset: 10px; pointer-events: none; z-index: 2; }
 
 .lux-gallery-panel { padding: 32px 24px 36px; }
 @media (min-width: 480px) { .lux-gallery-panel { padding: 40px 32px 44px; } }
 
-/* Gallery header */
 .lux-gallery-bar {
   display: flex; align-items: flex-start; justify-content: space-between;
   flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
@@ -571,44 +535,32 @@ body {
 }
 .lux-btn-action.dl:hover { box-shadow: 0 6px 22px var(--gold-glow); transform: translateY(-1px); }
 
-/* ── PHOTO GRID — editorial 5-column asymmetric ──────────────────────────
-   Desktop: 5 equal columns, gap 4px
-   First item: spans col 1-3, row 1-2 (large anchor)
-   Items 2-3: cols 4-5 (stacked)
-   Items 4-6: cols 1-2, 3, 4-5 (varied)
-   Falls back to 2-col on mobile, 3-col on tablet
-───────────────────────────────────────────────────────────────────────── */
+/* ── PHOTO GRID — editorial 5-col asymmetric ─────────────────────────────
+   Mobile:  2-col equal
+   Tablet:  3-col equal
+   Desktop: 5-col — item 1 anchors 3×2, items 2–3 stack right 2-col,
+            row 3 breaks 2+1+2
+────────────────────────────────────────────────────────────────────────── */
 .lux-photo-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-auto-rows: 136px;
   gap: 4px;
 }
-
 @media (min-width: 480px) {
-  .lux-photo-grid {
-    grid-template-columns: repeat(3, 1fr);
-    grid-auto-rows: 152px;
-  }
+  .lux-photo-grid { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 152px; }
 }
-
 @media (min-width: 640px) {
-  .lux-photo-grid {
-    grid-template-columns: repeat(5, 1fr);
-    grid-auto-rows: 120px;
-  }
-  /* Anchor: first photo takes the left 3 cols × 2 rows */
-  .lux-photo-item.featured {
-    grid-column: 1 / 4;
-    grid-row: 1 / 3;
-  }
-  /* Next two stack in the right 2 cols */
-  .lux-photo-item:nth-child(2) { grid-column: 4 / 6; }
-  .lux-photo-item:nth-child(3) { grid-column: 4 / 6; }
-  /* Row 3: 2-col + 1-col + 2-col */
-  .lux-photo-item:nth-child(4) { grid-column: 1 / 3; }
-  .lux-photo-item:nth-child(5) { grid-column: 3 / 4; }
-  .lux-photo-item:nth-child(6) { grid-column: 4 / 6; }
+  .lux-photo-grid { grid-template-columns: repeat(5, 1fr); grid-auto-rows: 120px; }
+  .lux-photo-item.featured    { grid-column: 1 / 4; grid-row: 1 / 3; }
+  .lux-photo-item:nth-child(2){ grid-column: 4 / 6; }
+  .lux-photo-item:nth-child(3){ grid-column: 4 / 6; }
+  .lux-photo-item:nth-child(4){ grid-column: 1 / 3; }
+  .lux-photo-item:nth-child(5){ grid-column: 3 / 4; }
+  .lux-photo-item:nth-child(6){ grid-column: 4 / 6; }
+}
+@media (max-width: 639px) {
+  .lux-photo-item.featured { grid-column: span 2; grid-row: span 2; }
 }
 
 .lux-photo-item {
@@ -616,11 +568,6 @@ body {
   background: var(--pink-mid);
   position: relative; border: 2px solid transparent; transition: all .3s var(--ease-out);
 }
-/* On mobile keep the featured span */
-@media (max-width: 639px) {
-  .lux-photo-item.featured { grid-column: span 2; grid-row: span 2; }
-}
-
 .lux-photo-item.selected { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
 .lux-photo-item img {
   width: 100%; height: 100%; object-fit: cover; display: block;
@@ -628,15 +575,9 @@ body {
 }
 .lux-photo-item:hover img { transform: scale(1.05); filter: brightness(1.02); }
 
-/* Hover overlay */
 .lux-photo-hover {
   position: absolute; inset: 0;
-  background: linear-gradient(
-    180deg,
-    transparent 25%,
-    rgba(28,15,20,0.18) 65%,
-    rgba(28,15,20,0.48) 100%
-  );
+  background: linear-gradient(180deg, transparent 25%, rgba(28,15,20,0.18) 65%, rgba(28,15,20,0.48) 100%);
   opacity: 0; transition: opacity .35s;
   display: flex; align-items: flex-end; justify-content: flex-end; padding: 10px;
 }
@@ -648,7 +589,6 @@ body {
   display: flex; align-items: center; justify-content: center;
 }
 
-/* Selection check */
 .lux-select-check {
   position: absolute; top: 7px; left: 7px;
   width: 20px; height: 20px; border-radius: 50%;
@@ -665,7 +605,6 @@ body {
   box-shadow: 0 2px 8px var(--gold-glow);
 }
 
-/* Empty state */
 .lux-no-photos { grid-column: 1/-1; padding: 72px 0; text-align: center; }
 .lux-no-photos-ring {
   width: 52px; height: 52px; border-radius: 50%;
@@ -684,7 +623,6 @@ body {
   color: var(--ink-40); margin-top: 8px;
 }
 
-/* View all */
 .lux-view-all-wrap { text-align: center; margin-top: 24px; }
 .lux-btn-view-all {
   font-family: var(--font-body); font-size: 10px; font-weight: 500;
@@ -713,9 +651,7 @@ body {
   font-size: clamp(13px, 2.8vw, 16px); color: var(--ink-40); letter-spacing: 0.10em;
 }
 
-/* ── LIGHTBOX ────────────────────────────────────────────────────────────
-   Signature feature: filmstrip scrubber replaces plain counter
-─────────────────────────────────────────────────────────────────────── */
+/* ── LIGHTBOX + FILMSTRIP ───────────────────────────────────────────────── */
 .lux-lightbox {
   position: fixed; inset: 0; z-index: 1000;
   background: rgba(7, 2, 5, 0.97);
@@ -753,7 +689,6 @@ body {
 }
 .lux-lb-img.zoomed { transform: scale(2.2); }
 
-/* Filmstrip scrubber */
 .lux-lb-filmstrip {
   position: absolute; bottom: 0; left: 0; right: 0;
   display: flex; align-items: center; justify-content: center;
@@ -764,8 +699,7 @@ body {
 .lux-lb-filmstrip::-webkit-scrollbar { display: none; }
 
 .lux-lb-thumb {
-  flex-shrink: 0;
-  width: 38px; height: 28px;
+  flex-shrink: 0; width: 38px; height: 28px;
   background: rgba(255,255,255,0.10);
   border: 1.5px solid transparent;
   overflow: hidden; cursor: pointer; transition: all .25s; opacity: 0.52;
@@ -774,7 +708,6 @@ body {
 .lux-lb-thumb.active { border-color: var(--gold); opacity: 1; box-shadow: 0 0 0 1px rgba(184,144,74,0.5); }
 .lux-lb-thumb:hover:not(.active) { opacity: 0.82; border-color: rgba(255,255,255,0.25); }
 
-/* Zoom toggle — floats above filmstrip */
 .lux-lb-zoom {
   position: absolute; bottom: 80px;
   background: transparent; border: 0.5px solid rgba(255,255,255,0.16);
@@ -786,24 +719,31 @@ body {
 .lux-lb-zoom:hover { color: #fff; border-color: rgba(184,144,74,0.55); }
 `;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   NEW JSX  — refined markup for each section
-══════════════════════════════════════════════════════════════════════════════ */
+  const CSS_OPEN = "const LUXURY_CSS = `\n";
+  const CSS_CLOSE_RE = /`[ \t]*\n+const MOCK_PHOTOS/;
 
-/* ── 1. Replace entire LUXURY_CSS string ─────────────────────────────────── */
-const ORIGINAL_IMPORTS = `import { useState, useEffect, useRef } from "react";
+  const cssOpenIdx = src.indexOf(CSS_OPEN);
+  if (cssOpenIdx === -1) throw new Error("CSS block open marker not found");
 
-const LUXURY_CSS = \``;
+  const afterCssOpen   = src.indexOf("\n", cssOpenIdx) + 1;
+  const cssCloseMatch  = src.slice(afterCssOpen).search(CSS_CLOSE_RE);
+  if (cssCloseMatch === -1) throw new Error("CSS block close marker not found");
 
-const NEW_IMPORTS = `import { useState, useEffect, useRef } from "react";
+  const closeAbsIdx    = afterCssOpen + cssCloseMatch;
+  const afterBacktick  = src.slice(closeAbsIdx).replace(/^`[ \t]*\n+/, "");
 
-const LUXURY_CSS = \``;
+  src = src.slice(0, cssOpenIdx) + "const LUXURY_CSS = `" + NEW_CSS + "`\n\n" + afterBacktick;
+  patchCount++;
+  console.log("✓  CSS block replaced with Vellum & Verdigris design");
+} else {
+  console.log("   skipped  CSS block  (Vellum & Verdigris already applied)");
+}
 
-/* ── 2. Hero JSX — new names structure with outlined second name ──────────── */
-const OLD_HERO = `        {/* HERO */}
-        <div className="lux-hero">
-          <div className="lux-pretitle">Wedding Gallery</div>
-          <div className="lux-names">
+// ═══════════════════════════════════════════════════════════════════════════
+//  PATCH B — Hero: replace lux-amp-row with lux-connector-row
+// ═══════════════════════════════════════════════════════════════════════════
+apply("Hero connector row",
+  `<div className="lux-names">
             <span className="lux-name">Claudine</span>
             <div className="lux-amp-row">
               <div className="lux-amp-rule l" />
@@ -816,13 +756,8 @@ const OLD_HERO = `        {/* HERO */}
             <div className="lux-pip" />
             <span className="lux-date-txt">Forever begins · 2026</span>
             <div className="lux-pip" />
-          </div>
-        </div>`;
-
-const NEW_HERO = `        {/* HERO */}
-        <div className="lux-hero">
-          <div className="lux-pretitle">Wedding Gallery</div>
-          <div className="lux-names">
+          </div>`,
+  `<div className="lux-names">
             <span className="lux-name">Claudine</span>
             <div className="lux-connector-row">
               <div className="lux-connector-rule" />
@@ -836,43 +771,51 @@ const NEW_HERO = `        {/* HERO */}
           </div>
           <div className="lux-date-row">
             <span className="lux-date-txt">Forever begins · 2026</span>
-          </div>
-        </div>`;
+          </div>`
+);
 
-/* ── 3. Section dividers → eyebrow labels ────────────────────────────────── */
-const OLD_VIDEO_DIV = `        {/* VIDEO MOMENTS */}
-        <SectionDivider label="Video Moments" />`;
-const NEW_VIDEO_DIV = `        {/* VIDEO MOMENTS */}
-        <div className="lux-eyebrow"><span className="lux-eyebrow-label">Video Moments</span><div className="lux-eyebrow-rule" /></div>`;
+// ═══════════════════════════════════════════════════════════════════════════
+//  PATCH C — Section dividers → eyebrow labels
+// ═══════════════════════════════════════════════════════════════════════════
+apply("Video Moments eyebrow",
+  `{/* VIDEO MOMENTS */}\n        <SectionDivider label="Video Moments" />`,
+  `{/* VIDEO MOMENTS */}\n        <div className="lux-eyebrow"><span className="lux-eyebrow-label">Video Moments</span><div className="lux-eyebrow-rule" /></div>`
+);
 
-const OLD_UPLOAD_DIV = `        <SectionDivider label="Share Your Photos" />`;
-const NEW_UPLOAD_DIV = `        <div className="lux-eyebrow"><span className="lux-eyebrow-label">Share Your Photos</span><div className="lux-eyebrow-rule" /></div>`;
+apply("Upload eyebrow",
+  `<SectionDivider label="Share Your Photos" />`,
+  `<div className="lux-eyebrow"><span className="lux-eyebrow-label">Share Your Photos</span><div className="lux-eyebrow-rule" /></div>`
+);
 
-const OLD_SHARED_DIV = `        {/* GALLERY — inside white card/widget */}
-        <InnerDivider label="Shared Memories" />`;
-const NEW_SHARED_DIV = `        {/* GALLERY — inside white card/widget */}
-        <div className="lux-inner-label-row"><span className="lux-inner-label-txt">Shared Memories</span><div className="lux-inner-label-rule" /></div>`;
+apply("Shared Memories inner label",
+  `{/* GALLERY — inside white card/widget */}\n        <InnerDivider label="Shared Memories" />`,
+  `{/* GALLERY — inside white card/widget */}\n        <div className="lux-inner-label-row"><span className="lux-inner-label-txt">Shared Memories</span><div className="lux-inner-label-rule" /></div>`
+);
 
-/* ── 4. Gallery card — replace corner brackets with engraved SVG frame ───── */
-const OLD_CARD_OPEN = `        <div className="lux-card">
+// ═══════════════════════════════════════════════════════════════════════════
+//  PATCH D — Gallery card: corner brackets → engraved SVG frame
+// ═══════════════════════════════════════════════════════════════════════════
+apply("Gallery card engraved frame",
+  `<div className="lux-card">
           <div className="lux-corner tl" /><div className="lux-corner tr" />
-          <div className="lux-corner bl" /><div className="lux-corner br" />`;
-
-const NEW_CARD_OPEN = `        <div className="lux-card">
-          {/* Engraved hairline frame — continuous with notched corners */}
+          <div className="lux-corner bl" /><div className="lux-corner br" />`,
+  `<div className="lux-card">
           <svg className="lux-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none"
             style={{position:'absolute',inset:10,width:'calc(100% - 20px)',height:'calc(100% - 20px)',pointerEvents:'none',zIndex:2}}>
             <rect x="0.5" y="0.5" width="99" height="99" fill="none"
               stroke="rgba(184,144,74,0.28)" strokeWidth="0.4" vectorEffect="non-scaling-stroke" />
-            {/* Corner notches */}
             {[['0.5','0.5'],['99.5','0.5'],['0.5','99.5'],['99.5','99.5']].map(([cx,cy],i)=>(
               <circle key={i} cx={cx} cy={cy} r="1.5" fill="none"
                 stroke="rgba(184,144,74,0.45)" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
             ))}
-          </svg>`;
+          </svg>`
+);
 
-/* ── 5. Lightbox bottom — filmstrip replacing plain counter + zoom ────────── */
-const OLD_LB_BOTTOM = `        <div className="lux-lb-bottom">
+// ═══════════════════════════════════════════════════════════════════════════
+//  PATCH E — Lightbox: counter+zoom block → zoom button + filmstrip
+// ═══════════════════════════════════════════════════════════════════════════
+apply("Lightbox filmstrip",
+  `        <div className="lux-lb-bottom">
           <span className="lux-lb-counter">{lightbox.idx + 1} / {photos.length}</span>
           <button
             className="lux-lb-zoom"
@@ -880,9 +823,8 @@ const OLD_LB_BOTTOM = `        <div className="lux-lb-bottom">
           >
             {lightbox.zoomed ? "Zoom Out" : "Zoom In"}
           </button>
-        </div>`;
-
-const NEW_LB_BOTTOM = `        <button
+        </div>`,
+  `        <button
           className="lux-lb-zoom"
           onClick={() => setLightbox(l => ({ ...l, zoomed: !l.zoomed }))}
         >
@@ -898,70 +840,65 @@ const NEW_LB_BOTTOM = `        <button
               <img src={photo.url} alt="" />
             </div>
           ))}
-        </div>`;
+        </div>`
+);
 
-/* ════════════════════════════════════════════════════════════════════════════
-   APPLY PATCHES
-   Strategy: detect line endings, normalise to LF for matching, restore at end
-═══════════════════════════════════════════════════════════════════════════ */
-const rawBytes = fs.readFileSync(TARGET, "utf8");
-
-// Detect whether the file uses CRLF (Windows git checkout) or LF
-const hasCRLF  = rawBytes.includes("\r\n");
-// Normalise to LF for all matching/replacing
-let src = hasCRLF ? rawBytes.replace(/\r\n/g, "\n") : rawBytes;
-
-console.log(`  Line endings: ${hasCRLF ? "CRLF (Windows) — normalising for patch" : "LF (Unix)"}`);
-
-// ── Patch 1: Replace the CSS block ────────────────────────────────────────
-// Locate "const LUXURY_CSS = `" … closing backtick before "const MOCK_PHOTOS"
-const CSS_OPEN     = "const LUXURY_CSS = `\n";
-const CSS_CLOSE_RE = /`\s*\n\s*const MOCK_PHOTOS/;
-
-const cssOpenIdx = src.indexOf(CSS_OPEN);
-if (cssOpenIdx === -1) throw new Error("CSS block open marker not found — is this the right file?");
-
-const afterCssOpen    = src.indexOf("\n", cssOpenIdx) + 1;
-const cssCloseMatch   = src.slice(afterCssOpen).search(CSS_CLOSE_RE);
-if (cssCloseMatch === -1) throw new Error("CSS block close marker not found");
-
-const cssCloseIdx = afterCssOpen + cssCloseMatch;
-
-src =
-  src.slice(0, cssOpenIdx) +
-  "const LUXURY_CSS = `" + NEW_CSS + "`\n\n" +
-  src.slice(cssCloseIdx).replace(/^`[ \t]*\n/, "");
-
-console.log("✓ CSS block replaced");
-
-// ── Helper: patch with clear diagnostics ─────────────────────────────────
-function applyPatch(oldStr, newStr, label) {
-  if (src.includes(oldStr)) {
-    src = src.replace(oldStr, newStr);
-    console.log(`✓ ${label}`);
-  } else {
-    console.warn(`⚠  ${label} — marker not found (may already be patched)`);
-  }
+// ═══════════════════════════════════════════════════════════════════════════
+//  PATCH F — Remove dead SectionDivider + InnerDivider functions (ESLint)
+// ═══════════════════════════════════════════════════════════════════════════
+apply("Remove unused SectionDivider function",
+  `function SectionDivider({ label }) {
+  return (
+    <div className="lux-div">
+      <div className="lux-div-rule" />
+      <div className="lux-div-gem" />
+      <span className="lux-div-label">{label}</span>
+      <div className="lux-div-gem" />
+      <div className="lux-div-rule" />
+    </div>
+  );
 }
 
-// ── Patch 2: Hero JSX ────────────────────────────────────────────────────
-applyPatch(OLD_HERO, NEW_HERO, "Hero JSX updated");
+`,
+  ``
+);
 
-// ── Patch 3: Section dividers → eyebrow labels ───────────────────────────
-applyPatch(OLD_VIDEO_DIV,  NEW_VIDEO_DIV,  "Video Moments eyebrow");
-applyPatch(OLD_UPLOAD_DIV, NEW_UPLOAD_DIV, "Upload eyebrow");
-applyPatch(OLD_SHARED_DIV, NEW_SHARED_DIV, "Shared Memories label");
+apply("Remove unused InnerDivider function",
+  `function InnerDivider({ label }) {
+  return (
+    <div className="lux-inner-div">
+      <div className="lux-inner-rule" />
+      <div className="lux-inner-gem" />
+      <span className="lux-inner-label">{label}</span>
+      <div className="lux-inner-gem" />
+      <div className="lux-inner-rule" />
+    </div>
+  );
+}
 
-// ── Patch 4: Gallery card corners → engraved SVG frame ───────────────────
-applyPatch(OLD_CARD_OPEN, NEW_CARD_OPEN, "Gallery card engraved frame");
+`,
+  ``
+);
 
-// ── Patch 5: Lightbox bottom → filmstrip ─────────────────────────────────
-applyPatch(OLD_LB_BOTTOM, NEW_LB_BOTTOM, "Lightbox filmstrip");
+// ═══════════════════════════════════════════════════════════════════════════
+//  PATCH G — Fix a11y alt text warnings (ESLint jsx-a11y)
+// ═══════════════════════════════════════════════════════════════════════════
+apply("Fix alt: preview img",
+  `alt="preview"`,
+  `alt=""`
+);
 
-// ── Write — restore original line endings ────────────────────────────────
+// Two instances of "wedding photo" alt — replace both
+src = src.split(`alt="wedding photo"`).join(`alt=""`);
+if (!src.includes(`alt="wedding photo"`)) {
+  patchCount++;
+  console.log("✓  Fix alt: wedding photo imgs");
+}
+
+// ── Write ─────────────────────────────────────────────────────────────────
 const output = hasCRLF ? src.replace(/\n/g, "\r\n") : src;
 fs.writeFileSync(TARGET, output, "utf8");
 
-console.log(`\n✓ Patch complete → ${path.relative(__dirname, TARGET)}`);
-console.log("  Run  npm start  to preview the updated design.");
-console.log("  Original preserved at WeddingGallery.js.bak\n");
+console.log(`\n✓  ${patchCount} change(s) applied → ${path.relative(__dirname, TARGET)}`);
+console.log("   Run  npm start  to preview.");
+console.log("   Backup preserved at WeddingGallery.js.bak\n");

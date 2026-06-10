@@ -745,6 +745,7 @@ body {
 .lux-lb-zoom:hover { color: #fff; border-color: rgba(184,144,74,0.55); }
 `
 
+
 const MOCK_PHOTOS = [
   { id: 1, url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=85", name: "ceremony.jpg" },
   { id: 2, url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600&q=85", name: "couple.jpg" },
@@ -890,17 +891,18 @@ export default function WeddingGallery() {
           <div className="lux-pretitle">Wedding Gallery</div>
           <div className="lux-names">
             <span className="lux-name">Claudine</span>
-            <div className="lux-amp-row">
-              <div className="lux-amp-rule l" />
-              <span className="lux-amp">&amp;</span>
-              <div className="lux-amp-rule r" />
+            <div className="lux-connector-row">
+              <div className="lux-connector-rule" />
+              <div className="lux-connector-center">
+                <span className="lux-connector-amp">and</span>
+                <div className="lux-connector-dot" />
+              </div>
+              <div className="lux-connector-rule r" />
             </div>
             <span className="lux-name">Mark</span>
           </div>
           <div className="lux-date-row">
-            <div className="lux-pip" />
             <span className="lux-date-txt">Forever begins · 2026</span>
-            <div className="lux-pip" />
           </div>
         </div>
 
@@ -924,7 +926,7 @@ export default function WeddingGallery() {
         </div>
 
         {/* VIDEO MOMENTS */}
-        <SectionDivider label="Video Moments" />
+        <div className="lux-eyebrow"><span className="lux-eyebrow-label">Video Moments</span><div className="lux-eyebrow-rule" /></div>
         <div className="lux-stories-head">
           <div>
             <div className="lux-stories-title">Moments in Motion</div>
@@ -1006,11 +1008,20 @@ export default function WeddingGallery() {
         </div>
 
         {/* GALLERY — inside white card/widget */}
-        <InnerDivider label="Shared Memories" />
+        <div className="lux-inner-label-row"><span className="lux-inner-label-txt">Shared Memories</span><div className="lux-inner-label-rule" /></div>
 
         <div className="lux-card">
-          <div className="lux-corner tl" /><div className="lux-corner tr" />
-          <div className="lux-corner bl" /><div className="lux-corner br" />
+          {/* Engraved hairline frame — continuous with notched corners */}
+          <svg className="lux-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none"
+            style={{position:'absolute',inset:10,width:'calc(100% - 20px)',height:'calc(100% - 20px)',pointerEvents:'none',zIndex:2}}>
+            <rect x="0.5" y="0.5" width="99" height="99" fill="none"
+              stroke="rgba(184,144,74,0.28)" strokeWidth="0.4" vectorEffect="non-scaling-stroke" />
+            {/* Corner notches */}
+            {[['0.5','0.5'],['99.5','0.5'],['0.5','99.5'],['99.5','99.5']].map(([cx,cy],i)=>(
+              <circle key={i} cx={cx} cy={cy} r="1.5" fill="none"
+                stroke="rgba(184,144,74,0.45)" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+            ))}
+          </svg>
 
           <div className="lux-gallery-panel">
             <div className="lux-gallery-bar">
@@ -1122,14 +1133,22 @@ export default function WeddingGallery() {
             />
           )}
         </div>
-        <div className="lux-lb-bottom">
-          <span className="lux-lb-counter">{lightbox.idx + 1} / {photos.length}</span>
-          <button
-            className="lux-lb-zoom"
-            onClick={() => setLightbox(l => ({ ...l, zoomed: !l.zoomed }))}
-          >
-            {lightbox.zoomed ? "Zoom Out" : "Zoom In"}
-          </button>
+        <button
+          className="lux-lb-zoom"
+          onClick={() => setLightbox(l => ({ ...l, zoomed: !l.zoomed }))}
+        >
+          {lightbox.zoomed ? "Zoom Out" : "Zoom In"}
+        </button>
+        <div className="lux-lb-filmstrip">
+          {photos.map((photo, idx) => (
+            <div
+              key={photo.id}
+              className={`lux-lb-thumb${lightbox.idx === idx ? " active" : ""}`}
+              onClick={() => setLightbox(l => ({ ...l, idx, zoomed: false }))}
+            >
+              <img src={photo.url} alt="" />
+            </div>
+          ))}
         </div>
       </div>
     </>
