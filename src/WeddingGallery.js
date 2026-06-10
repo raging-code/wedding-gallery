@@ -743,6 +743,31 @@ body {
   padding: 8px 18px; cursor: pointer; transition: all .25s;
 }
 .lux-lb-zoom:hover { color: #fff; border-color: rgba(184,144,74,0.55); }
+
+/* ── FLOATING PETALS ────────────────────────────────────────────── */
+@keyframes petalFall {
+  0%   { transform: translateY(-60px) translateX(0)              rotate(0deg); opacity: 0; }
+  8%   { opacity: 0.85; }
+  92%  { opacity: 0.55; }
+  100% { transform: translateY(110vh) translateX(var(--petal-x)) rotate(var(--petal-r)); opacity: 0; }
+}
+@keyframes petalSway {
+  0%, 100% { margin-left: 0; }
+  50%       { margin-left: var(--petal-sway); }
+}
+
+.lux-petal {
+  position: fixed;
+  top: -60px;
+  z-index: 0;
+  pointer-events: none;
+  width:  var(--petal-size);
+  height: calc(var(--petal-size) * 1.2);
+  animation:
+    petalFall    var(--petal-dur)      linear      var(--petal-delay) infinite,
+    petalSway    var(--petal-sway-dur) ease-in-out var(--petal-delay) infinite;
+}
+.lux-petal svg { width: 100%; height: 100%; display: block; }
 `
 
 
