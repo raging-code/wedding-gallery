@@ -1,6 +1,47 @@
-import { useState, useEffect, useRef } from "react";
+/**
+ * patch-premium.mjs
+ * Wedding Gallery — "Vellum & Verdigris" design overhaul
+ *
+ * Run from the project root:
+ *   node patch-premium.mjs
+ *
+ * What this patch does:
+ *  1. Rewrites LUXURY_CSS inside WeddingGallery.js with a new premium design system
+ *  2. Rewrites the JSX render tree with refined structure and markup
+ *  3. Keeps all existing color tokens intact (rose / gold / ink palette)
+ *  4. Upgrades typography to Cormorant Infant + DM Serif Display (already available)
+ *  5. Replaces generic patterns with distinctive, editorial-grade treatments
+ *
+ * Safe to run multiple times — it writes an atomic backup before patching.
+ */
 
-const LUXURY_CSS = `
+import fs   from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const TARGET    = path.join(__dirname, "src", "WeddingGallery.js");
+const BACKUP    = path.join(__dirname, "src", "WeddingGallery.js.bak");
+
+/* ─── Guard ─────────────────────────────────────────────────────────────── */
+if (!fs.existsSync(TARGET)) {
+  console.error("✗ Could not find src/WeddingGallery.js — are you in the project root?");
+  process.exit(1);
+}
+
+/* ─── Backup ─────────────────────────────────────────────────────────────── */
+fs.copyFileSync(TARGET, BACKUP);
+console.log(`✓ Backup written → ${path.relative(__dirname, BACKUP)}`);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEW CSS  — "Vellum & Verdigris"
+   Palette: preserved exactly from original tokens
+   Type:    DM Serif Display (hero) · Cormorant Infant (display) · Jost (body)
+   Signature: press-reveal hero animation · editorial 5-col photo grid ·
+              engraved SVG-frame card · flush-left section eyebrows ·
+              filmstrip lightbox scrubber
+══════════════════════════════════════════════════════════════════════════════ */
+const NEW_CSS = `
 /* ── DM Serif Display (hero) · Cormorant Infant (display) · Jost (body) ─── */
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Cormorant+Infant:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500;1,600&family=Jost:wght@200;300;400;500;600&display=swap');
 
@@ -743,150 +784,42 @@ body {
   padding: 8px 18px; cursor: pointer; transition: all .25s;
 }
 .lux-lb-zoom:hover { color: #fff; border-color: rgba(184,144,74,0.55); }
-`
+`;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEW JSX  — refined markup for each section
+══════════════════════════════════════════════════════════════════════════════ */
 
-const MOCK_PHOTOS = [
-  { id: 1, url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=85", name: "ceremony.jpg" },
-  { id: 2, url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600&q=85", name: "couple.jpg" },
-  { id: 3, url: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=600&q=85", name: "reception.jpg" },
-  { id: 4, url: "https://images.unsplash.com/photo-1525772764200-be829a350797?w=600&q=85", name: "dance.jpg" },
-  { id: 5, url: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=600&q=85", name: "rings.jpg" },
-  { id: 6, url: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=600&q=85", name: "portrait.jpg" },
-  { id: 7, url: "https://images.unsplash.com/photo-1550005809-91ad75fb315f?w=600&q=85", name: "flowers.jpg" },
-  { id: 8, url: "https://images.unsplash.com/photo-1591604466107-ec97de577aff?w=600&q=85", name: "venue.jpg" },
-];
+/* ── 1. Replace entire LUXURY_CSS string ─────────────────────────────────── */
+const ORIGINAL_IMPORTS = `import { useState, useEffect, useRef } from "react";
 
-function SectionDivider({ label }) {
-  return (
-    <div className="lux-div">
-      <div className="lux-div-rule" />
-      <div className="lux-div-gem" />
-      <span className="lux-div-label">{label}</span>
-      <div className="lux-div-gem" />
-      <div className="lux-div-rule" />
-    </div>
-  );
-}
+const LUXURY_CSS = \``;
 
-function InnerDivider({ label }) {
-  return (
-    <div className="lux-inner-div">
-      <div className="lux-inner-rule" />
-      <div className="lux-inner-gem" />
-      <span className="lux-inner-label">{label}</span>
-      <div className="lux-inner-gem" />
-      <div className="lux-inner-rule" />
-    </div>
-  );
-}
+const NEW_IMPORTS = `import { useState, useEffect, useRef } from "react";
 
-export default function WeddingGallery() {
-  const [photos] = useState(MOCK_PHOTOS);
-  const [previews, setPreviews] = useState([]);
-  const [selectMode, setSelectMode] = useState(false);
-  const [selected, setSelected] = useState(new Set());
-  const [showAll, setShowAll] = useState(false);
-  const [lightbox, setLightbox] = useState({ open: false, idx: 0, zoomed: false });
-  const fileInputRef = useRef(null);
+const LUXURY_CSS = \``;
 
-  useEffect(() => {
-    if (!document.getElementById("lux-css")) {
-      const s = document.createElement("style");
-      s.id = "lux-css"; s.textContent = LUXURY_CSS;
-      document.head.appendChild(s);
-    }
-  }, []);
+/* ── 2. Hero JSX — new names structure with outlined second name ──────────── */
+const OLD_HERO = `        {/* HERO */}
+        <div className="lux-hero">
+          <div className="lux-pretitle">Wedding Gallery</div>
+          <div className="lux-names">
+            <span className="lux-name">Claudine</span>
+            <div className="lux-amp-row">
+              <div className="lux-amp-rule l" />
+              <span className="lux-amp">&amp;</span>
+              <div className="lux-amp-rule r" />
+            </div>
+            <span className="lux-name">Mark</span>
+          </div>
+          <div className="lux-date-row">
+            <div className="lux-pip" />
+            <span className="lux-date-txt">Forever begins · 2026</span>
+            <div className="lux-pip" />
+          </div>
+        </div>`;
 
-  useEffect(() => {
-    const handler = (e) => {
-      if (!lightbox.open) return;
-      if (e.key === "Escape")     setLightbox(l => ({ ...l, open: false, zoomed: false }));
-      if (e.key === "ArrowLeft")  setLightbox(l => ({ ...l, idx: (l.idx - 1 + photos.length) % photos.length, zoomed: false }));
-      if (e.key === "ArrowRight") setLightbox(l => ({ ...l, idx: (l.idx + 1) % photos.length, zoomed: false }));
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [lightbox, photos.length]);
-
-  function handleFiles(fileList) {
-    Array.from(fileList).filter(f => f.type.startsWith("image/"))
-      .slice(0, 20 - previews.length)
-      .forEach(file => {
-        const url = URL.createObjectURL(file);
-        setPreviews(p => [...p, { url, name: file.name, id: Date.now() + Math.random() }]);
-      });
-  }
-
-  function removePreview(id) { setPreviews(p => p.filter(x => x.id !== id)); }
-
-  function openLightbox(idx) {
-    if (selectMode) { toggleSelect(idx); return; }
-    setLightbox({ open: true, idx, zoomed: false });
-  }
-
-  function navPhoto(dir) {
-    setLightbox(l => ({ ...l, idx: (l.idx + dir + photos.length) % photos.length, zoomed: false }));
-  }
-
-  function toggleSelect(idx) {
-    if (!selectMode) return;
-    setSelected(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; });
-  }
-
-  function toggleSelectMode() {
-    setSelectMode(s => { if (s) setSelected(new Set()); return !s; });
-  }
-
-  function selectAll() {
-    if (selected.size === photos.length) setSelected(new Set());
-    else setSelected(new Set(photos.map((_, i) => i)));
-  }
-
-  const visiblePhotos = showAll ? photos : photos.slice(0, 9);
-  const currentImg = photos[lightbox.idx];
-
-  return (
-    <>
-
-      {/* Ambient background canvas */}
-      <div className="lux-bg-canvas" />
-
-      {/* Floating petals — ambient atmosphere */}
-      {[
-        { l:'8%',  size:10, dur:14, delay:0,    x:40,  r:280, sway:16, swayDur:3.2 },
-        { l:'18%', size:7,  dur:18, delay:3,    x:-30, r:320, sway:12, swayDur:2.8 },
-        { l:'32%', size:12, dur:12, delay:6,    x:55,  r:240, sway:20, swayDur:3.6 },
-        { l:'47%', size:8,  dur:16, delay:1.5,  x:-45, r:300, sway:14, swayDur:3.0 },
-        { l:'61%', size:11, dur:13, delay:8,    x:35,  r:260, sway:18, swayDur:2.6 },
-        { l:'75%', size:7,  dur:19, delay:4,    x:-25, r:340, sway:10, swayDur:3.4 },
-        { l:'88%', size:9,  dur:15, delay:10,   x:50,  r:220, sway:15, swayDur:3.0 },
-        { l:'24%', size:6,  dur:20, delay:12,   x:-38, r:380, sway:8,  swayDur:2.4 },
-        { l:'54%', size:13, dur:11, delay:7,    x:42,  r:290, sway:22, swayDur:3.8 },
-        { l:'90%', size:8,  dur:17, delay:2,    x:-20, r:310, sway:11, swayDur:2.9 },
-      ].map((p, i) => (
-        <div key={i} className="lux-petal" style={{
-          left: p.l,
-          '--petal-size':     `${p.size}px`,
-          '--petal-dur':      `${p.dur}s`,
-          '--petal-delay':    `${p.delay}s`,
-          '--petal-x':        `${p.x}px`,
-          '--petal-r':        `${p.r}deg`,
-          '--petal-sway':     `${p.sway}px`,
-          '--petal-sway-dur': `${p.swayDur}s`,
-        }}>
-          <svg viewBox="0 0 20 24" fill="none">
-            <path d="M10 2C10 2 4 7 4 13a6 6 0 0012 0C16 7 10 2 10 2z"
-              fill="rgba(196,116,142,0.45)" />
-            <path d="M10 2C10 2 4 7 4 13"
-              stroke="rgba(184,144,74,0.25)" strokeWidth="0.6" strokeLinecap="round" />
-          </svg>
-        </div>
-      ))}
-
-      <div className="lux-page">
-
-        {/* HERO */}
+const NEW_HERO = `        {/* HERO */}
         <div className="lux-hero">
           <div className="lux-pretitle">Wedding Gallery</div>
           <div className="lux-names">
@@ -904,113 +837,28 @@ export default function WeddingGallery() {
           <div className="lux-date-row">
             <span className="lux-date-txt">Forever begins · 2026</span>
           </div>
-        </div>
+        </div>`;
 
-        {/* INVITATION TEXT — plain, no card */}
-        <div className="lux-invite-plain">
-          <p className="lux-invite-body">
-            Capture the kilig moments, tawanan, iyakan,<br />
-            and every beautiful memory we've made together.<br />
-            Don't forget to tag us and use our hashtag:
-          </p>
-          <div className="lux-hashtag-wrap">
-            <span className="lux-hashtag">
-              <span className="lux-ht-gold">#Forever</span>
-              <span className="lux-ht-ink">MARK</span>
-              <span className="lux-ht-gold">edfor</span>
-              <span className="lux-ht-ink">CLAUD</span>
-            </span>
-          </div>
-          <div className="lux-cta-hint">Got the perfect shot? Upload it below</div>
-          <span className="lux-arrow" />
-        </div>
+/* ── 3. Section dividers → eyebrow labels ────────────────────────────────── */
+const OLD_VIDEO_DIV = `        {/* VIDEO MOMENTS */}
+        <SectionDivider label="Video Moments" />`;
+const NEW_VIDEO_DIV = `        {/* VIDEO MOMENTS */}
+        <div className="lux-eyebrow"><span className="lux-eyebrow-label">Video Moments</span><div className="lux-eyebrow-rule" /></div>`;
 
-        {/* VIDEO MOMENTS */}
-        <div className="lux-eyebrow"><span className="lux-eyebrow-label">Video Moments</span><div className="lux-eyebrow-rule" /></div>
-        <div className="lux-stories-head">
-          <div>
-            <div className="lux-stories-title">Moments in Motion</div>
-            <div className="lux-stories-sub">Swipe to watch · tap to play</div>
-          </div>
-          <button className="lux-btn-ghost">+ Add Video</button>
-        </div>
-        <div className="lux-stories-strip">
-          <div className="lux-story-add" onClick={() => {}}>
-            <div className="lux-story-add-ring">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M9 4v10M4 9h10" stroke="#b8944f" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-            </div>
-            <span className="lux-story-add-label">Add<br />Video</span>
-          </div>
-          {[0, 1, 2].map(i => (
-            <div className="lux-story-ph" key={i}>
-              <div className="lux-story-ph-inner">
-                <div className="lux-story-ph-icon">
-                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                    <rect x="1.5" y="3.5" width="13" height="9" rx="1.2" stroke="#c4748e" strokeWidth="0.9" />
-                    <path d="M6 6.5l4.5 1.5L6 9.5V6.5z" stroke="#c4748e" strokeWidth="0.9" />
-                  </svg>
-                </div>
-                <div className="lux-story-ph-txt">Coming<br />soon</div>
-              </div>
-              <div className="lux-shimmer" />
-            </div>
-          ))}
-        </div>
+const OLD_UPLOAD_DIV = `        <SectionDivider label="Share Your Photos" />`;
+const NEW_UPLOAD_DIV = `        <div className="lux-eyebrow"><span className="lux-eyebrow-label">Share Your Photos</span><div className="lux-eyebrow-rule" /></div>`;
 
-        {/* UPLOAD — simple button only, no drop container */}
-        <div className="lux-eyebrow"><span className="lux-eyebrow-label">Share Your Photos</span><div className="lux-eyebrow-rule" /></div>
-        <div className="lux-upload-simple">
-          <button
-            className="lux-btn-upload"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M12 16V9" stroke="#fce8ef" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M9 12l3-3 3 3" stroke="#fce8ef" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M5 19h14" stroke="#fce8ef" strokeWidth="1.2" strokeLinecap="round"/>
-              <path d="M7 10.5A5 5 0 0 1 17 10.5" stroke="rgba(252,232,239,0.6)" strokeWidth="1" strokeLinecap="round"/>
-            </svg>
-            Upload Photos
-          </button>
-          <span className="lux-upload-hint">JPEG · PNG · WEBP · Up to 5 MB · Max 20 photos</span>
-          <input
-            ref={fileInputRef} type="file" multiple accept="image/*"
-            style={{ display: "none" }}
-            onChange={e => { handleFiles(e.target.files); e.target.value = ""; }}
-          />
+const OLD_SHARED_DIV = `        {/* GALLERY — inside white card/widget */}
+        <InnerDivider label="Shared Memories" />`;
+const NEW_SHARED_DIV = `        {/* GALLERY — inside white card/widget */}
+        <div className="lux-inner-label-row"><span className="lux-inner-label-txt">Shared Memories</span><div className="lux-inner-label-rule" /></div>`;
 
-          {previews.length > 0 && (
-            <div className="lux-preview-sec">
-              <div className="lux-preview-label">
-                {previews.length} photo{previews.length !== 1 ? "s" : ""} ready to send
-              </div>
-              <div className="lux-preview-grid">
-                {previews.map(p => (
-                  <div className="lux-preview-item" key={p.id}>
-                    <img src={p.url} alt="preview" />
-                    <button className="lux-preview-remove" onClick={() => removePreview(p.id)}>✕</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+/* ── 4. Gallery card — replace corner brackets with engraved SVG frame ───── */
+const OLD_CARD_OPEN = `        <div className="lux-card">
+          <div className="lux-corner tl" /><div className="lux-corner tr" />
+          <div className="lux-corner bl" /><div className="lux-corner br" />`;
 
-          {previews.length > 0 && (
-            <div className="lux-send-bar">
-              <button className="lux-btn-send">Send to Gallery</button>
-              <div className="lux-send-hint">
-                {previews.length} photo{previews.length !== 1 ? "s" : ""} will be shared with all guests
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* GALLERY — inside white card/widget */}
-        <div className="lux-inner-label-row"><span className="lux-inner-label-txt">Shared Memories</span><div className="lux-inner-label-rule" /></div>
-
-        <div className="lux-card">
+const NEW_CARD_OPEN = `        <div className="lux-card">
           {/* Engraved hairline frame — continuous with notched corners */}
           <svg className="lux-card-frame" viewBox="0 0 100 100" preserveAspectRatio="none"
             style={{position:'absolute',inset:10,width:'calc(100% - 20px)',height:'calc(100% - 20px)',pointerEvents:'none',zIndex:2}}>
@@ -1021,119 +869,20 @@ export default function WeddingGallery() {
               <circle key={i} cx={cx} cy={cy} r="1.5" fill="none"
                 stroke="rgba(184,144,74,0.45)" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
             ))}
-          </svg>
+          </svg>`;
 
-          <div className="lux-gallery-panel">
-            <div className="lux-gallery-bar">
-              <div>
-                <div className="lux-gallery-title">Photo Gallery</div>
-                <div className="lux-gallery-sub">Every frame, forever</div>
-              </div>
-              <div className="lux-gallery-actions">
-                <button
-                  className={`lux-btn-action${selectMode ? " active" : ""}`}
-                  onClick={toggleSelectMode}
-                >
-                  {selectMode ? "Done" : "Select"}
-                </button>
-                {selectMode && photos.length > 0 && (
-                  <button className="lux-btn-action" onClick={selectAll}>
-                    {selected.size === photos.length ? "Deselect All" : "Select All"}
-                  </button>
-                )}
-                {selected.size > 0 && (
-                  <button className="lux-btn-action dl">
-                    Download ({selected.size})
-                  </button>
-                )}
-              </div>
-            </div>
+/* ── 5. Lightbox bottom — filmstrip replacing plain counter + zoom ────────── */
+const OLD_LB_BOTTOM = `        <div className="lux-lb-bottom">
+          <span className="lux-lb-counter">{lightbox.idx + 1} / {photos.length}</span>
+          <button
+            className="lux-lb-zoom"
+            onClick={() => setLightbox(l => ({ ...l, zoomed: !l.zoomed }))}
+          >
+            {lightbox.zoomed ? "Zoom Out" : "Zoom In"}
+          </button>
+        </div>`;
 
-            {photos.length === 0 ? (
-              <div className="lux-no-photos">
-                <div className="lux-no-photos-ring">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <rect x="1.5" y="3.5" width="17" height="13" rx="1.8" stroke="#c4748e" strokeWidth="0.75" />
-                    <circle cx="7" cy="8.5" r="1.8" stroke="#c4748e" strokeWidth="0.75" />
-                    <path d="M1.5 13.5l4.5-3.5 3.5 3.5 4-5L18.5 14" stroke="#c4748e" strokeWidth="0.75" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <div className="lux-no-photos-txt">No photos yet</div>
-                <div className="lux-no-photos-hint">Be the first to share a memory</div>
-              </div>
-            ) : (
-              <>
-                <div className={`lux-photo-grid${selectMode ? " lux-selection-mode" : ""}`}>
-                  {visiblePhotos.map((photo, idx) => (
-                    <div
-                      key={photo.id}
-                      className={`lux-photo-item${idx === 0 ? " featured" : ""}${selected.has(idx) ? " selected" : ""}`}
-                      onClick={() => openLightbox(idx)}
-                    >
-                      <img src={photo.url} alt="wedding photo" loading="lazy" />
-                      <div className="lux-photo-hover">
-                        <div className="lux-photo-view-icon">
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                            <circle cx="5.5" cy="5.5" r="3.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1" />
-                            <path d="M8 8l2.5 2.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1" strokeLinecap="round" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div className="lux-select-check">
-                        {selected.has(idx) && (
-                          <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                            <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="lux-view-all-wrap">
-                  <button className="lux-btn-view-all" onClick={() => setShowAll(v => !v)}>
-                    {showAll ? "Show Less" : `View All · ${photos.length} Photos`}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* FOOTER */}
-        <footer className="lux-footer">
-          <svg width="180" height="14" viewBox="0 0 180 14">
-            <line x1="0" y1="7" x2="74" y2="7" stroke="#b8944f" strokeWidth="0.5" />
-            <rect x="82" y="3" width="8" height="8" fill="none" stroke="#b8944f" strokeWidth="0.5" transform="rotate(45 86 7)" />
-            <circle cx="86" cy="7" r="1.6" fill="#b8944f" />
-            <line x1="98" y1="7" x2="180" y2="7" stroke="#b8944f" strokeWidth="0.5" />
-          </svg>
-          <div className="lux-footer-names">Claudine &amp; Mark · 2026</div>
-          <svg width="110" height="10" viewBox="0 0 110 10">
-            <line x1="0" y1="5" x2="44" y2="5" stroke="rgba(184,148,79,0.3)" strokeWidth="0.5" />
-            <circle cx="55" cy="5" r="1.8" fill="none" stroke="#b8944f" strokeWidth="0.5" />
-            <line x1="66" y1="5" x2="110" y2="5" stroke="rgba(184,148,79,0.3)" strokeWidth="0.5" />
-          </svg>
-        </footer>
-      </div>
-
-      {/* LIGHTBOX */}
-      <div className={`lux-lightbox${lightbox.open ? " open" : ""}`}>
-        <button className="lux-lb-close" onClick={() => setLightbox(l => ({ ...l, open: false, zoomed: false }))}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-          </svg>
-        </button>
-        <button className="lux-lb-nav lux-lb-prev" onClick={() => navPhoto(-1)}>‹</button>
-        <button className="lux-lb-nav lux-lb-next" onClick={() => navPhoto(1)}>›</button>
-        <div className="lux-lb-img-wrap">
-          {lightbox.open && currentImg && (
-            <img
-              className={`lux-lb-img${lightbox.zoomed ? " zoomed" : ""}`}
-              src={currentImg.url} alt="wedding photo"
-            />
-          )}
-        </div>
-        <button
+const NEW_LB_BOTTOM = `        <button
           className="lux-lb-zoom"
           onClick={() => setLightbox(l => ({ ...l, zoomed: !l.zoomed }))}
         >
@@ -1143,14 +892,76 @@ export default function WeddingGallery() {
           {photos.map((photo, idx) => (
             <div
               key={photo.id}
-              className={`lux-lb-thumb${lightbox.idx === idx ? " active" : ""}`}
+              className={\`lux-lb-thumb\${lightbox.idx === idx ? " active" : ""}\`}
               onClick={() => setLightbox(l => ({ ...l, idx, zoomed: false }))}
             >
               <img src={photo.url} alt="" />
             </div>
           ))}
-        </div>
-      </div>
-    </>
-  );
+        </div>`;
+
+/* ════════════════════════════════════════════════════════════════════════════
+   APPLY PATCHES
+   Strategy: detect line endings, normalise to LF for matching, restore at end
+═══════════════════════════════════════════════════════════════════════════ */
+const rawBytes = fs.readFileSync(TARGET, "utf8");
+
+// Detect whether the file uses CRLF (Windows git checkout) or LF
+const hasCRLF  = rawBytes.includes("\r\n");
+// Normalise to LF for all matching/replacing
+let src = hasCRLF ? rawBytes.replace(/\r\n/g, "\n") : rawBytes;
+
+console.log(`  Line endings: ${hasCRLF ? "CRLF (Windows) — normalising for patch" : "LF (Unix)"}`);
+
+// ── Patch 1: Replace the CSS block ────────────────────────────────────────
+// Locate "const LUXURY_CSS = `" … closing backtick before "const MOCK_PHOTOS"
+const CSS_OPEN     = "const LUXURY_CSS = `\n";
+const CSS_CLOSE_RE = /`\s*\n\s*const MOCK_PHOTOS/;
+
+const cssOpenIdx = src.indexOf(CSS_OPEN);
+if (cssOpenIdx === -1) throw new Error("CSS block open marker not found — is this the right file?");
+
+const afterCssOpen    = src.indexOf("\n", cssOpenIdx) + 1;
+const cssCloseMatch   = src.slice(afterCssOpen).search(CSS_CLOSE_RE);
+if (cssCloseMatch === -1) throw new Error("CSS block close marker not found");
+
+const cssCloseIdx = afterCssOpen + cssCloseMatch;
+
+src =
+  src.slice(0, cssOpenIdx) +
+  "const LUXURY_CSS = `" + NEW_CSS + "`\n\n" +
+  src.slice(cssCloseIdx).replace(/^`[ \t]*\n/, "");
+
+console.log("✓ CSS block replaced");
+
+// ── Helper: patch with clear diagnostics ─────────────────────────────────
+function applyPatch(oldStr, newStr, label) {
+  if (src.includes(oldStr)) {
+    src = src.replace(oldStr, newStr);
+    console.log(`✓ ${label}`);
+  } else {
+    console.warn(`⚠  ${label} — marker not found (may already be patched)`);
+  }
 }
+
+// ── Patch 2: Hero JSX ────────────────────────────────────────────────────
+applyPatch(OLD_HERO, NEW_HERO, "Hero JSX updated");
+
+// ── Patch 3: Section dividers → eyebrow labels ───────────────────────────
+applyPatch(OLD_VIDEO_DIV,  NEW_VIDEO_DIV,  "Video Moments eyebrow");
+applyPatch(OLD_UPLOAD_DIV, NEW_UPLOAD_DIV, "Upload eyebrow");
+applyPatch(OLD_SHARED_DIV, NEW_SHARED_DIV, "Shared Memories label");
+
+// ── Patch 4: Gallery card corners → engraved SVG frame ───────────────────
+applyPatch(OLD_CARD_OPEN, NEW_CARD_OPEN, "Gallery card engraved frame");
+
+// ── Patch 5: Lightbox bottom → filmstrip ─────────────────────────────────
+applyPatch(OLD_LB_BOTTOM, NEW_LB_BOTTOM, "Lightbox filmstrip");
+
+// ── Write — restore original line endings ────────────────────────────────
+const output = hasCRLF ? src.replace(/\n/g, "\r\n") : src;
+fs.writeFileSync(TARGET, output, "utf8");
+
+console.log(`\n✓ Patch complete → ${path.relative(__dirname, TARGET)}`);
+console.log("  Run  npm start  to preview the updated design.");
+console.log("  Original preserved at WeddingGallery.js.bak\n");
