@@ -157,25 +157,26 @@ body {
 .lux-pretitle::before { background: linear-gradient(90deg, transparent, var(--gold)); }
 .lux-pretitle::after  { background: linear-gradient(90deg, var(--gold), transparent); }
 
-/* Names — DM Serif Display, press-reveal per name */
-.lux-names { display: flex; flex-direction: column; align-items: center; }
+/* Names — weight-contrast pair: heavy display vs. delicate serif */
+.lux-names { display: flex; flex-direction: column; align-items: center; overflow: visible; }
 
 .lux-name {
   font-family: var(--font-hero);
   font-style: italic; font-weight: 400;
-  font-size: clamp(68px, 17vw, 144px);
-  line-height: 0.86; letter-spacing: -0.02em;
+  font-size: clamp(58px, 14vw, 120px);
+  line-height: 1.05; letter-spacing: -0.02em;
   color: var(--ink);
   display: block;
-  /* Ink absorption reveal — first name slightly delayed */
   animation: pressReveal 1.0s var(--ease-press) both;
 }
 .lux-name:first-child { animation-delay: 0.20s; }
 .lux-name:last-child  {
   animation-delay: 0.52s;
-  color: transparent;
-  -webkit-text-stroke: 1px var(--ink);
-  /* Outline treatment for second name — engraved look */
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(64px, 16vw, 132px);
+  letter-spacing: 0.015em;
+  color: var(--ink-60);
 }
 
 /* Connector row — date + location typography replacing the ampersand */
