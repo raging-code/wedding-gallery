@@ -8,8 +8,8 @@
      Every rule is scoped to avoid breaking existing layout logic.
 
    Fonts injected via HTML:
-     Display  → Cormorant Garamond (300 / 400 / 500, normal + italic)
-     Body     → Raleway            (200 / 300 / 400 / 500 / 600)
+     Display  → Fraunces           (300 / 400 / 500 / 600 / 700, normal + italic)
+     Body     → Manrope            (200 / 300 / 400 / 500 / 600)
    ======================================================================= */
 
 
@@ -18,8 +18,8 @@
    ───────────────────────────────────────────────────────────────────── */
 :root {
   /* Typography stacks */
-  --pf-display : 'Cormorant Garamond', 'Garamond', 'Book Antiqua', Georgia, serif;
-  --pf-body    : 'Raleway', 'Helvetica Neue', Arial, sans-serif;
+  --pf-display : 'Fraunces', Georgia, serif;
+  --pf-body    : 'Manrope', system-ui, sans-serif;
 
   /* Gold accent — harmonises with rose, champagne, blush palettes */
   --pf-gold        : #C4A35A;
