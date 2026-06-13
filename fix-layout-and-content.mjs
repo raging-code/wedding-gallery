@@ -26,16 +26,23 @@ const backup = FILE + '.bak-layout-' + Date.now();
 copyFileSync(FILE, backup);
 console.log('✔ Backup →', backup);
 
-let src = readFileSync(FILE, 'utf8');
+let raw = readFileSync(FILE, 'utf8');
+
+// Normalize line endings to LF so patterns match regardless of how the
+// file was checked out (Windows/git often uses CRLF).
+const usesCRLF = raw.includes('\r\n');
+let src = raw.replace(/\r\n/g, '\n');
 const original = src;
 
 function replace(label, find, replacement, { required = true } = {}) {
-  if (!src.includes(find)) {
+  const normFind = find.replace(/\r\n/g, '\n');
+  const normReplacement = replacement.replace(/\r\n/g, '\n');
+  if (!src.includes(normFind)) {
     if (required) throw new Error(`Pattern not found for: ${label}`);
     console.log(`… skipped (already applied?): ${label}`);
     return;
   }
-  src = src.replace(find, replacement);
+  src = src.replace(normFind, normReplacement);
   console.log(`✔ ${label}`);
 }
 
@@ -196,6 +203,7 @@ ${reindentedUpload}
 if (src === original) {
   console.log('No changes were made — file already up to date.');
 } else {
-  writeFileSync(FILE, src, 'utf8');
+  const out = usesCRLF ? src.replace(/\n/g, '\r\n') : src;
+  writeFileSync(FILE, out, 'utf8');
   console.log('✔ Wrote changes to', FILE);
 }
