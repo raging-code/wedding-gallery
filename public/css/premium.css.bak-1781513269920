@@ -564,7 +564,7 @@ a.btn,
 a.button,
 input[type="submit"],
 input[type="button"],
-button:not([class*="close"]):not([class*="dismiss"]):not([class*="toggle"]):not([class*="lux-"]) {
+button:not([class*="close"]):not([class*="dismiss"]):not([class*="toggle"]) {
   font-family   : var(--pf-body) !important;
   font-weight   : 500 !important;
   font-size     : 0.68rem !important;

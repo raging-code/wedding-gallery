@@ -1,16 +1,17 @@
 /**
  * fix-mobile-buttons.mjs
  * ─────────────────────────────────────────────────────────────────────────────
- * Two fixes:
+ * ROOT CAUSE (found via analysis):
+ *   public/css/premium.css has a broad rule:
+ *     button:not([class*="close"]):not([class*="dismiss"]):not([class*="toggle"]) {
+ *       padding: 0.95rem 2.6rem !important;
+ *       font-size: 0.68rem !important; }
+ *   This matches ALL lux-* buttons (specificity 0,3,1 beats our 0,1,0)
+ *   and forces large padding with !important — overriding everything in LUXURY_CSS.
  *
- * 1. STYLE CACHE BUG — The useEffect injects CSS only once
- *    (`if (!document.getElementById("lux-css"))`), so hot-reloads in dev
- *    never pick up CSS changes. Fixed by always updating textContent.
- *
- * 2. BUTTON SIZES — Upload Photos and View All are too large on mobile.
- *    Previous patch only targeted ≤479px; many phones (390–430px) are wider.
- *    Fix: reduce padding/font-size in the BASE rule so it applies everywhere,
- *    then restore the larger desktop size at min-width: 640px.
+ * FIX:
+ *   1. Patch premium.css — add :not([class*="lux-"]) to exclude all our buttons.
+ *   2. Keep the smaller base sizes in LUXURY_CSS (already in the repo).
  *
  * RUN: node fix-mobile-buttons.mjs
  * ─────────────────────────────────────────────────────────────────────────────
@@ -19,119 +20,55 @@
 import { readFileSync, writeFileSync, copyFileSync } from 'fs';
 import { resolve } from 'path';
 
-const FILE = resolve('src/WeddingGallery.js');
-
-function replace(src, label, find, replacement, required = true) {
+function patch(filePath, label, find, replacement, required = true) {
   const norm    = s => s.replace(/\r\n/g, '\n');
+  let   src     = readFileSync(filePath, 'utf8');
   const hadCRLF = src.includes('\r\n');
   const s       = norm(src);
   const f       = norm(find);
   if (!s.includes(f)) {
     if (required) throw new Error(`Pattern not found for: ${label}`);
     console.log(`⚠  Skipped (already applied): ${label}`);
-    return src;
+    return;
   }
   let result = s.replace(f, norm(replacement));
   if (hadCRLF) result = result.replace(/\n/g, '\r\n');
+  writeFileSync(filePath, result, 'utf8');
   console.log(`✔  ${label}`);
-  return result;
 }
 
-let src = readFileSync(FILE, 'utf8');
-const bak = `${FILE}.bak-mobilebtns-${Date.now()}`;
-copyFileSync(FILE, bak);
-console.log(`✔  Backup → ${bak}\n`);
+// ── 1. Fix premium.css — exclude lux-* buttons from the broad rule ───────────
+const PREMIUM = resolve('public/css/premium.css');
+const bak1 = `${PREMIUM}.bak-${Date.now()}`;
+copyFileSync(PREMIUM, bak1);
+console.log(`✔  Backup → ${bak1}`);
 
-// ── 1. Fix style cache bug ───────────────────────────────────────────────────
-src = replace(
-  src,
-  '1. Fix style injection — always update textContent',
-  `  useEffect(() => {
-    if (!document.getElementById("lux-css")) {
+patch(
+  PREMIUM,
+  '1. premium.css — exclude lux-* buttons from forced padding/font-size',
+  `button:not([class*="close"]):not([class*="dismiss"]):not([class*="toggle"]) {`,
+  `button:not([class*="close"]):not([class*="dismiss"]):not([class*="toggle"]):not([class*="lux-"]) {`
+);
+
+// ── 2. Ensure LUXURY_CSS style injection always updates (cache fix) ───────────
+const WG = resolve('src/WeddingGallery.js');
+const bak2 = `${WG}.bak-${Date.now()}`;
+copyFileSync(WG, bak2);
+console.log(`✔  Backup → ${bak2}\n`);
+
+patch(
+  WG,
+  '2. Style injection — always update textContent (cache fix)',
+  `    if (!document.getElementById("lux-css")) {
       const s = document.createElement("style");
       s.id = "lux-css"; s.textContent = LUXURY_CSS;
       document.head.appendChild(s);
-    }
-  }, []);`,
-  `  useEffect(() => {
-    let s = document.getElementById("lux-css");
+    }`,
+  `    let s = document.getElementById("lux-css");
     if (!s) { s = document.createElement("style"); s.id = "lux-css"; document.head.appendChild(s); }
-    s.textContent = LUXURY_CSS;
-  }, []);`
+    s.textContent = LUXURY_CSS;`,
+  false // already applied in latest repo
 );
 
-// ── 2. Upload Photos button — smaller base size, restore large on desktop ────
-src = replace(
-  src,
-  '2. Upload Photos — smaller base, desktop restore',
-  `.lux-btn-upload {
-  display: inline-flex; align-items: center; gap: 13px;
-  font-family: var(--font-body); font-size: 11px; font-weight: 500;
-  letter-spacing: 0.26em; text-transform: uppercase;
-  padding: 18px 52px;
-  background: var(--ink); color: var(--pink);
-  border: none; cursor: pointer;
-  transition: all .35s var(--ease-out);
-  box-shadow: 0 8px 28px rgba(28,15,20,0.20), 0 1px 0 rgba(255,255,255,0.07) inset;
-  position: relative; overflow: hidden;
-}`,
-  `.lux-btn-upload {
-  display: inline-flex; align-items: center; gap: 13px;
-  font-family: var(--font-body); font-size: 10px; font-weight: 500;
-  letter-spacing: 0.22em; text-transform: uppercase;
-  padding: 11px 20px;
-  background: var(--ink); color: var(--pink);
-  border: none; cursor: pointer;
-  transition: all .35s var(--ease-out);
-  box-shadow: 0 8px 28px rgba(28,15,20,0.20), 0 1px 0 rgba(255,255,255,0.07) inset;
-  position: relative; overflow: hidden;
-}
-@media (min-width: 640px) {
-  .lux-btn-upload { font-size: 11px; letter-spacing: 0.26em; padding: 18px 52px; }
-}`
-);
-
-// ── 3. View All button — smaller base size, restore large on desktop ──────────
-src = replace(
-  src,
-  '3. View All — smaller base, desktop restore',
-  `.lux-btn-view-all {
-  font-family: var(--font-body); font-size: 10px; font-weight: 500;
-  letter-spacing: 0.26em; text-transform: uppercase;
-  padding: 12px 36px; background: transparent;
-  border: 0.5px solid var(--gold-border); color: var(--ink-60);
-  cursor: pointer; transition: .3s; position: relative; overflow: hidden;
-}`,
-  `.lux-btn-view-all {
-  font-family: var(--font-body); font-size: 9px; font-weight: 500;
-  letter-spacing: 0.22em; text-transform: uppercase;
-  padding: 9px 20px; background: transparent;
-  border: 0.5px solid var(--gold-border); color: var(--ink-60);
-  cursor: pointer; transition: .3s; position: relative; overflow: hidden;
-}
-@media (min-width: 640px) {
-  .lux-btn-view-all { font-size: 10px; letter-spacing: 0.26em; padding: 12px 36px; }
-}`
-);
-
-// ── 4 & 5. Clean up now-redundant ≤479px overrides ──────────────────────────
-src = replace(
-  src,
-  '4. Remove redundant ≤479px upload button override',
-  `  .lux-btn-upload     { width: 100%; justify-content: center; padding: 11px 20px; font-size: 10px; letter-spacing: 0.22em; }`,
-  `  .lux-btn-upload     { width: 100%; justify-content: center; }`,
-  false
-);
-
-src = replace(
-  src,
-  '5. Remove redundant ≤479px view-all button override',
-  `  .lux-btn-view-all  { width: 100%; padding: 10px 20px; font-size: 9px; letter-spacing: 0.22em; }`,
-  `  .lux-btn-view-all  { width: 100%; }`,
-  false
-);
-
-writeFileSync(FILE, src, 'utf8');
-console.log('\n✅  Done.');
-console.log('   • Style injection now always updates — hot-reload picks up CSS changes.');
-console.log('   • Both buttons are smaller on all mobile widths, full size on desktop (≥640px).');
+console.log('✅  Done.');
+console.log('   Buttons will now respect the sizes defined in LUXURY_CSS on all screen sizes.');
