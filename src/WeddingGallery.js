@@ -396,14 +396,17 @@ body {
 /* Primary CTA — full-width on mobile, auto on desktop */
 .lux-btn-upload {
   display: inline-flex; align-items: center; gap: 13px;
-  font-family: var(--font-body); font-size: 11px; font-weight: 500;
-  letter-spacing: 0.26em; text-transform: uppercase;
-  padding: 18px 52px;
+  font-family: var(--font-body); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  padding: 11px 20px;
   background: var(--ink); color: var(--pink);
   border: none; cursor: pointer;
   transition: all .35s var(--ease-out);
   box-shadow: 0 8px 28px rgba(28,15,20,0.20), 0 1px 0 rgba(255,255,255,0.07) inset;
   position: relative; overflow: hidden;
+}
+@media (min-width: 640px) {
+  .lux-btn-upload { font-size: 11px; letter-spacing: 0.26em; padding: 18px 52px; }
 }
 /* Gold sweep on hover — restrained */
 .lux-btn-upload::after {
@@ -659,11 +662,14 @@ body {
 /* View all */
 .lux-view-all-wrap { text-align: center; margin-top: 24px; }
 .lux-btn-view-all {
-  font-family: var(--font-body); font-size: 10px; font-weight: 500;
-  letter-spacing: 0.26em; text-transform: uppercase;
-  padding: 12px 36px; background: transparent;
+  font-family: var(--font-body); font-size: 9px; font-weight: 500;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  padding: 9px 20px; background: transparent;
   border: 0.5px solid var(--gold-border); color: var(--ink-60);
   cursor: pointer; transition: .3s; position: relative; overflow: hidden;
+}
+@media (min-width: 640px) {
+  .lux-btn-view-all { font-size: 10px; letter-spacing: 0.26em; padding: 12px 36px; }
 }
 .lux-btn-view-all::before {
   content: '';
@@ -812,7 +818,7 @@ body {
 
   /* Upload CTA — stretch to full width */
   .lux-upload-simple  { align-items: stretch; }
-  .lux-btn-upload     { width: 100%; justify-content: center; padding: 11px 20px; font-size: 10px; letter-spacing: 0.22em; }
+  .lux-btn-upload     { width: 100%; justify-content: center; }
   .lux-upload-hint    { text-align: center; }
 
   /* Send bar — stretch to full width */
@@ -837,7 +843,7 @@ body {
 
   /* View All: full-width */
   .lux-view-all-wrap { margin-top: 14px; }
-  .lux-btn-view-all  { width: 100%; padding: 10px 20px; font-size: 9px; letter-spacing: 0.22em; }
+  .lux-btn-view-all  { width: 100%; }
 
   /* Footer: reduce large top gap */
   .lux-footer { margin-top: 60px; gap: 14px; }
@@ -899,11 +905,9 @@ export default function WeddingGallery() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (!document.getElementById("lux-css")) {
-      const s = document.createElement("style");
-      s.id = "lux-css"; s.textContent = LUXURY_CSS;
-      document.head.appendChild(s);
-    }
+    let s = document.getElementById("lux-css");
+    if (!s) { s = document.createElement("style"); s.id = "lux-css"; document.head.appendChild(s); }
+    s.textContent = LUXURY_CSS;
   }, []);
 
   useEffect(() => {

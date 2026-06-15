@@ -812,7 +812,7 @@ body {
 
   /* Upload CTA — stretch to full width */
   .lux-upload-simple  { align-items: stretch; }
-  .lux-btn-upload     { width: 100%; justify-content: center; padding: 18px 20px; }
+  .lux-btn-upload     { width: 100%; justify-content: center; padding: 11px 20px; font-size: 10px; letter-spacing: 0.22em; }
   .lux-upload-hint    { text-align: center; }
 
   /* Send bar — stretch to full width */
@@ -837,7 +837,7 @@ body {
 
   /* View All: full-width */
   .lux-view-all-wrap { margin-top: 14px; }
-  .lux-btn-view-all  { width: 100%; padding: 14px 20px; }
+  .lux-btn-view-all  { width: 100%; padding: 10px 20px; font-size: 9px; letter-spacing: 0.22em; }
 
   /* Footer: reduce large top gap */
   .lux-footer { margin-top: 60px; gap: 14px; }
