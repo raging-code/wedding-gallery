@@ -43,7 +43,7 @@ const LUXURY_CSS = `
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; overflow-x: hidden; width: 100%; }
+html { scroll-behavior: smooth; }
 
 body {
   background: var(--page-bg);
