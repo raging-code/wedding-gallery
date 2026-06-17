@@ -816,8 +816,9 @@ body {
   .lux-invite-body  { line-height: 1.85; }
   .lux-cta-hint     { margin-top: 20px; }
 
-  /* Upload CTA — compact pill, centered like desktop */
-  .lux-btn-upload     { padding: 14px 32px; justify-content: center; }
+  /* Upload CTA — stretch to full width */
+  .lux-upload-simple  { align-items: stretch; }
+  .lux-btn-upload     { width: 100%; justify-content: center; }
   .lux-upload-hint    { text-align: center; }
 
   /* Send bar — stretch to full width */
@@ -840,9 +841,9 @@ body {
   /* Stories heading */
   .lux-stories-head { margin-bottom: 10px; }
 
-  /* View All: compact pill, centered like desktop */
+  /* View All: full-width */
   .lux-view-all-wrap { margin-top: 14px; }
-  .lux-btn-view-all  { padding: 11px 28px; }
+  .lux-btn-view-all  { width: 100%; }
 
   /* Footer: reduce large top gap */
   .lux-footer { margin-top: 60px; gap: 14px; }
