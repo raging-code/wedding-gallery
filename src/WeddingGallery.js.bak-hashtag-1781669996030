@@ -847,10 +847,6 @@ body {
   /* Footer: reduce large top gap */
   .lux-footer { margin-top: 60px; gap: 14px; }
 
-  /* Hashtag — bigger on phones, kept safely under the available width
-     since "#ForeverMARKedforCLAUD" is one unbroken 22-character run */
-  .lux-hashtag { font-size: clamp(22px, 7vw, 34px); }
-
   /* Hero names — bigger presence on phones (scales with viewport,
      tapers back near-original on very narrow/legacy widths) */
   .lux-name              { font-size: clamp(70px, 23vw, 150px); }
