@@ -17,3 +17,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 __backup__/
+
+# B2 / Cloudflare secrets — NEVER commit real env files
+.dev.vars
+.wrangler/

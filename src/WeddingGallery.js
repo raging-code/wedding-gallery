@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 const LUXURY_CSS = `
 /* ── Fraunces (hero + display) · Manrope (body) ─────────────────────────── */
@@ -896,30 +896,93 @@ body {
 `
 
 
-const MOCK_PHOTOS = [
-  { id: 1, url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=85", name: "ceremony.jpg" },
-  { id: 2, url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600&q=85", name: "couple.jpg" },
-  { id: 3, url: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=600&q=85", name: "reception.jpg" },
-  { id: 4, url: "https://images.unsplash.com/photo-1525772764200-be829a350797?w=600&q=85", name: "dance.jpg" },
-  { id: 5, url: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=600&q=85", name: "rings.jpg" },
-  { id: 6, url: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=600&q=85", name: "portrait.jpg" },
-  { id: 7, url: "https://images.unsplash.com/photo-1550005809-91ad75fb315f?w=600&q=85", name: "flowers.jpg" },
-  { id: 8, url: "https://images.unsplash.com/photo-1591604466107-ec97de577aff?w=600&q=85", name: "venue.jpg" },
-];
+// ── B2 API config ────────────────────────────────────────────────────────────
+// In production these are Cloudflare Pages Functions at /api/*
+// In local dev (npm start) you need to run: npx wrangler pages dev build --compatibility-date 2024-01-01
+const API_BASE = '';  // empty = same origin (works for both Pages and local wrangler dev)
+
+/** Upload a single file → returns the public B2 URL */
+async function b2Upload(file, type) {
+  // 1. Ask our server-side Function for a presigned PUT URL
+  const metaRes = await fetch(`${API_BASE}/api/upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type,
+      filename:    file.name,
+      contentType: file.type,
+      sizeBytes:   file.size,
+    }),
+  });
+  if (!metaRes.ok) {
+    const err = await metaRes.json().catch(() => ({}));
+    throw new Error(err.error || `Upload init failed (${metaRes.status})`);
+  }
+  const { uploadUrl, publicUrl } = await metaRes.json();
+
+  // 2. PUT the file bytes directly to B2 (no server proxy)
+  const putRes = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  });
+  if (!putRes.ok) throw new Error(`B2 PUT failed (${putRes.status})`);
+
+  return publicUrl;
+}
+
+/** List media from all buckets via our server-side Function */
+async function b2List(type) {
+  const res = await fetch(`${API_BASE}/api/list?type=${type}`);
+  if (!res.ok) throw new Error(`List failed (${res.status})`);
+  const { items } = await res.json();
+  return items.map((item, i) => ({
+    id:   i + 1,
+    url:  item.url,
+    name: item.key.split('/').pop(),
+    size: item.size,
+    uploaded: item.uploaded,
+  }));
+}
 
 export default function WeddingGallery() {
-  const [photos] = useState(MOCK_PHOTOS);
-  const [previews, setPreviews] = useState([]);
+  const [photos, setPhotos]         = useState([]);
+  const [videos, setVideos]         = useState([]);
+  const [photosLoading, setPhotosLoading] = useState(true);
+  const [videosLoading, setVideosLoading] = useState(true);
+  const [previews, setPreviews]     = useState([]);
+  const [uploadState, setUploadState] = useState({ active: false, progress: 0, error: null });
+  const [videoPreview, setVideoPreview] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
-  const [selected, setSelected] = useState(new Set());
-  const [showAll, setShowAll] = useState(false);
-  const [lightbox, setLightbox] = useState({ open: false, idx: 0, zoomed: false });
-  const fileInputRef = useRef(null);
+  const [selected, setSelected]     = useState(new Set());
+  const [showAll, setShowAll]       = useState(false);
+  const [lightbox, setLightbox]     = useState({ open: false, idx: 0, zoomed: false });
+  const [activeTab, setActiveTab]   = useState('photos'); // 'photos' | 'videos'
+  const fileInputRef     = useRef(null);
+  const videoInputRef    = useRef(null);
 
   useEffect(() => {
     let s = document.getElementById("lux-css");
     if (!s) { s = document.createElement("style"); s.id = "lux-css"; document.head.appendChild(s); }
     s.textContent = LUXURY_CSS;
+  }, []);
+
+  // Load photos from B2 on mount
+  useEffect(() => {
+    setPhotosLoading(true);
+    b2List('photo')
+      .then(items => setPhotos(items))
+      .catch(err  => console.error('Photo list error:', err))
+      .finally(()  => setPhotosLoading(false));
+  }, []);
+
+  // Load videos from B2 on mount
+  useEffect(() => {
+    setVideosLoading(true);
+    b2List('video')
+      .then(items => setVideos(items))
+      .catch(err  => console.error('Video list error:', err))
+      .finally(()  => setVideosLoading(false));
   }, []);
 
   useEffect(() => {
@@ -938,11 +1001,52 @@ export default function WeddingGallery() {
       .slice(0, 20 - previews.length)
       .forEach(file => {
         const url = URL.createObjectURL(file);
-        setPreviews(p => [...p, { url, name: file.name, id: Date.now() + Math.random() }]);
+        setPreviews(p => [...p, { url, name: file.name, id: Date.now() + Math.random(), file }]);
       });
   }
 
   function removePreview(id) { setPreviews(p => p.filter(x => x.id !== id)); }
+
+  function handleVideoFile(fileList) {
+    const file = Array.from(fileList).find(f => f.type.startsWith("video/"));
+    if (!file) return;
+    setVideoPreview({ url: URL.createObjectURL(file), name: file.name, id: Date.now(), file });
+  }
+
+  async function uploadPhotos() {
+    if (!previews.length) return;
+    setUploadState({ active: true, progress: 0, error: null });
+    try {
+      const uploaded = [];
+      for (let i = 0; i < previews.length; i++) {
+        const p = previews[i];
+        const publicUrl = await b2Upload(p.file, 'photo');
+        uploaded.push({ id: Date.now() + i, url: publicUrl, name: p.name });
+        setUploadState(s => ({ ...s, progress: Math.round(((i + 1) / previews.length) * 100) }));
+        URL.revokeObjectURL(p.url);
+      }
+      setPhotos(prev => [...uploaded.reverse(), ...prev]);
+      setPreviews([]);
+      setUploadState({ active: false, progress: 0, error: null });
+    } catch (err) {
+      setUploadState({ active: false, progress: 0, error: err.message });
+    }
+  }
+
+  async function uploadVideo() {
+    if (!videoPreview) return;
+    setUploadState({ active: true, progress: 0, error: null });
+    try {
+      const publicUrl = await b2Upload(videoPreview.file, 'video');
+      setVideos(prev => [{ id: Date.now(), url: publicUrl, name: videoPreview.name }, ...prev]);
+      URL.revokeObjectURL(videoPreview.url);
+      setVideoPreview(null);
+      setUploadState({ active: false, progress: 100, error: null });
+      setTimeout(() => setUploadState(s => ({ ...s, progress: 0 })), 1500);
+    } catch (err) {
+      setUploadState({ active: false, progress: 0, error: err.message });
+    }
+  }
 
   function openLightbox(idx) {
     if (selectMode) { toggleSelect(idx); return; }
@@ -1046,14 +1150,15 @@ export default function WeddingGallery() {
           <span className="lux-arrow" />
         </div>
 
-        {/* VIDEO MOMENTS */}
+        {/* VIDEO MOMENTS — live from B2 */}
         <div className="lux-stories-head">
           <div>
             <div className="lux-stories-sub">Swipe to watch · tap to play</div>
           </div>
         </div>
         <div className="lux-stories-strip">
-          <div className="lux-story-add" onClick={() => {}}>
+          {/* Add Video button */}
+          <div className="lux-story-add" onClick={() => videoInputRef.current?.click()}>
             <div className="lux-story-add-ring">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M9 4v10M4 9h10" stroke="#b8944f" strokeWidth="1.4" strokeLinecap="round" />
@@ -1061,7 +1166,51 @@ export default function WeddingGallery() {
             </div>
             <span className="lux-story-add-label">Add<br />Video</span>
           </div>
-          {[0, 1, 2].map(i => (
+          <input
+            ref={videoInputRef} type="file" accept="video/*"
+            style={{ display: "none" }}
+            onChange={e => { handleVideoFile(e.target.files); e.target.value = ""; }}
+          />
+
+          {/* Video preview before upload */}
+          {videoPreview && (
+            <div className="lux-story-ph" style={{ position: 'relative' }}>
+              <video
+                src={videoPreview.url}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }}
+                muted playsInline
+              />
+              <button
+                onClick={uploadVideo}
+                disabled={uploadState.active}
+                style={{
+                  position: 'absolute', bottom: 4, left: 4, right: 4,
+                  background: 'rgba(184,144,74,0.9)', color: '#fff',
+                  border: 'none', borderRadius: 6, fontSize: 10,
+                  padding: '4px 0', cursor: 'pointer', fontFamily: 'var(--font-body)'
+                }}
+              >
+                {uploadState.active ? `${uploadState.progress}%` : 'Upload'}
+              </button>
+            </div>
+          )}
+
+          {/* Uploaded videos */}
+          {videosLoading && [0,1,2].map(i => (
+            <div className="lux-story-ph" key={i}>
+              <div className="lux-story-ph-inner">
+                <div className="lux-story-ph-icon">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                    <rect x="1.5" y="3.5" width="13" height="9" rx="1.2" stroke="#c4748e" strokeWidth="0.9" />
+                    <path d="M6 6.5l4.5 1.5L6 9.5V6.5z" stroke="#c4748e" strokeWidth="0.9" />
+                  </svg>
+                </div>
+                <div className="lux-story-ph-txt">Loading…</div>
+              </div>
+              <div className="lux-shimmer" />
+            </div>
+          ))}
+          {!videosLoading && videos.length === 0 && !videoPreview && [0,1,2].map(i => (
             <div className="lux-story-ph" key={i}>
               <div className="lux-story-ph-inner">
                 <div className="lux-story-ph-icon">
@@ -1073,6 +1222,16 @@ export default function WeddingGallery() {
                 <div className="lux-story-ph-txt">Coming<br />soon</div>
               </div>
               <div className="lux-shimmer" />
+            </div>
+          ))}
+          {!videosLoading && videos.map(vid => (
+            <div className="lux-story-ph" key={vid.id} style={{ cursor: 'pointer' }}>
+              <video
+                src={vid.url}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }}
+                controls muted playsInline
+                preload="metadata"
+              />
             </div>
           ))}
         </div>
@@ -1127,7 +1286,20 @@ export default function WeddingGallery() {
 
             {previews.length > 0 && (
               <div className="lux-send-bar">
-                <button className="lux-btn-send">Send to Gallery</button>
+                {uploadState.error && (
+                  <div style={{ color: '#c45', fontSize: 12, marginBottom: 6, textAlign: 'center' }}>
+                    {uploadState.error}
+                  </div>
+                )}
+                <button
+                  className="lux-btn-send"
+                  onClick={uploadPhotos}
+                  disabled={uploadState.active}
+                >
+                  {uploadState.active
+                    ? `Uploading… ${uploadState.progress}%`
+                    : "Send to Gallery"}
+                </button>
                 <div className="lux-send-hint">
                   {previews.length} photo{previews.length !== 1 ? "s" : ""} will be shared with all guests
                 </div>
@@ -1162,7 +1334,19 @@ export default function WeddingGallery() {
               </div>
             </div>
 
-            {photos.length === 0 ? (
+            {photosLoading ? (
+              <div className="lux-no-photos">
+                <div className="lux-no-photos-ring">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect x="1.5" y="3.5" width="17" height="13" rx="1.8" stroke="#c4748e" strokeWidth="0.75" />
+                    <circle cx="7" cy="8.5" r="1.8" stroke="#c4748e" strokeWidth="0.75" />
+                    <path d="M1.5 13.5l4.5-3.5 3.5 3.5 4-5L18.5 14" stroke="#c4748e" strokeWidth="0.75" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="lux-no-photos-txt">Loading gallery…</div>
+                <div className="lux-no-photos-hint">Fetching your memories</div>
+              </div>
+            ) : photos.length === 0 ? (
               <div className="lux-no-photos">
                 <div className="lux-no-photos-ring">
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
