@@ -419,36 +419,6 @@ body {
 @media (hover: none) { .lux-btn-upload:hover { transform: none; } }
 .lux-btn-upload:hover::after { left: 140%; }
 
-/* Corner registration marks — photo-frame L-brackets at each corner */
-.lux-upload-corner {
-  position: absolute;
-  width: 8px; height: 8px;
-  pointer-events: none; z-index: 2;
-  opacity: 0.55;
-  transition: opacity 0.35s var(--ease-out);
-}
-.lux-btn-upload:hover .lux-upload-corner { opacity: 1; }
-.lux-upload-corner::before,
-.lux-upload-corner::after {
-  content: '';
-  position: absolute;
-  background: var(--gold-light);
-}
-.lux-upload-corner::before { width: 1px; height: 8px; }
-.lux-upload-corner::after  { width: 8px; height: 1px; }
-.lux-upload-corner.tl { top: 8px; left: 8px; }
-.lux-upload-corner.tl::before { top: 0; left: 0; }
-.lux-upload-corner.tl::after  { top: 0; left: 0; }
-.lux-upload-corner.tr { top: 8px; right: 8px; }
-.lux-upload-corner.tr::before { top: 0; right: 0; }
-.lux-upload-corner.tr::after  { top: 0; right: 0; }
-.lux-upload-corner.bl { bottom: 8px; left: 8px; }
-.lux-upload-corner.bl::before { bottom: 0; left: 0; }
-.lux-upload-corner.bl::after  { bottom: 0; left: 0; }
-.lux-upload-corner.br { bottom: 8px; right: 8px; }
-.lux-upload-corner.br::before { bottom: 0; right: 0; }
-.lux-upload-corner.br::after  { bottom: 0; right: 0; }
-
 .lux-upload-hint {
   font-family: var(--font-body);
   font-size: 10.5px; font-weight: 300; letter-spacing: 0.07em;
@@ -1130,14 +1100,11 @@ export default function WeddingGallery() {
               className="lux-btn-upload"
               onClick={() => fileInputRef.current?.click()}
             >
-              <span className="lux-upload-corner tl" />
-              <span className="lux-upload-corner tr" />
-              <span className="lux-upload-corner bl" />
-              <span className="lux-upload-corner br" />
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                <line x1="7" y1="11.5" x2="7" y2="2" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round"/>
-                <path d="M4.5 5L7 2l2.5 3" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                <line x1="2" y1="12.5" x2="12" y2="12.5" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round"/>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 16V9" stroke="#fce8ef" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M9 12l3-3 3 3" stroke="#fce8ef" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M5 19h14" stroke="#fce8ef" strokeWidth="1.2" strokeLinecap="round"/>
+                <path d="M7 10.5A5 5 0 0 1 17 10.5" stroke="rgba(252,232,239,0.6)" strokeWidth="1" strokeLinecap="round"/>
               </svg>
               Upload Photos
             </button>
