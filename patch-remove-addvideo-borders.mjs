@@ -14,49 +14,83 @@
  *   node patch-remove-addvideo-borders.mjs
  */
 
-import { readFileSync, writeFileSync, copyFileSync } from 'fs';
-import path from 'path';
+import { readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
 
-const SRC = path.join(process.cwd(), 'src', 'WeddingGallery.js');
+const SRC = join(process.cwd(), 'src', 'WeddingGallery.js');
 
-// ── Backup ────────────────────────────────────────────────────────────────
-const ts = Date.now();
-const BACKUP = `${SRC}.bak-removeaddvideoborders-${ts}`;
-copyFileSync(SRC, BACKUP);
-console.log(`📦 Backup created: WeddingGallery.js.bak-removeaddvideoborders-${ts}`);
+// Read raw → detect CRLF → normalize to LF for matching
+const raw = readFileSync(SRC, 'utf8');
+const hasCRLF = raw.includes('\r\n');
+let src = raw.replace(/\r\n/g, '\n');
 
-let code = readFileSync(SRC, 'utf8');
-let patchCount = 0;
-
-function applyPatch(label, oldStr, newStr) {
-  if (!code.includes(oldStr)) {
-    console.error(`\n❌ PATCH FAILED: "${label}"\n   Could not find the target string.`);
-    console.error('   Restore from backup and re-run.\n');
-    process.exit(1);
-  }
-  code = code.replace(oldStr, newStr);
-  patchCount++;
-  console.log(`✅ [${patchCount}] ${label}`);
+// ── idempotency guard ───────────────────────────────────────────────────
+if (!src.includes('lux-btn-ghost') && !src.includes('lux-card-frame')) {
+  console.log('✅ Already patched — nothing to do.');
+  process.exit(0);
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// PATCH 1 — Remove "+ Add Video" button (JSX)
-// ════════════════════════════════════════════════════════════════════════
-applyPatch(
+// ── backup ──────────────────────────────────────────────────────────────
+const bakPath = SRC + '.bak-removeaddvideoborders-' + Date.now();
+writeFileSync(bakPath, raw, 'utf8');
+const bakName = bakPath.split(/[/\\]/).pop();
+console.log('📦 Backup created:', bakName);
+
+// ── helpers ─────────────────────────────────────────────────────────────
+function showNearby(search) {
+  const anchor = search
+    .split('\n')
+    .map(l => l.trim())
+    .find(l => l.length > 8) || search.slice(0, 30).trim();
+  const aidx = src.indexOf(anchor);
+  if (aidx !== -1) {
+    const snippet = src.slice(Math.max(0, aidx - 40), aidx + 220);
+    console.error('   Nearby actual content (for diagnosis):');
+    console.error('   ' + JSON.stringify(snippet));
+  } else {
+    console.error('   Could not even find a nearby anchor — that area may differ more than expected.');
+  }
+}
+
+function patch(label, search, replace) {
+  const idx = src.indexOf(search);
+  if (idx === -1) {
+    console.error(`\n❌ PATCH FAILED: "${label}"`);
+    console.error('   Target string not found in file.');
+    showNearby(search);
+    console.error(`   Restore from: ${bakName}`);
+    process.exit(1);
+  }
+  src = src.slice(0, idx) + replace + src.slice(idx + search.length);
+  console.log(`✅ Applied: "${label}"`);
+}
+
+function patchRegex(label, regex, replace) {
+  if (!regex.test(src)) {
+    console.error(`\n❌ PATCH FAILED: "${label}"`);
+    console.error('   Pattern not found in file.');
+    console.error(`   Restore from: ${bakName}`);
+    process.exit(1);
+  }
+  src = src.replace(regex, replace);
+  console.log(`✅ Applied: "${label}"`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PATCH 1 — Remove "+ Add Video" ghost button (JSX)
+// Regex-based and tolerant of whatever the button's label text actually
+// is (e.g. "+ Add Video" or "+ AddVideo") — only the className is fixed.
+// ═══════════════════════════════════════════════════════════════════════
+patchRegex(
   'JSX: remove "+ Add Video" ghost button',
-
-  `          </div>
-          <button className="lux-btn-ghost">+ Add Video</button>
-        </div>`,
-
-  `          </div>
-        </div>`
+  /\n[ \t]*<button className="lux-btn-ghost">[^<]*<\/button>/,
+  ''
 );
 
-// ════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // PATCH 2 — Remove now-unused .lux-btn-ghost CSS (desktop)
-// ════════════════════════════════════════════════════════════════════════
-applyPatch(
+// ═══════════════════════════════════════════════════════════════════════
+patch(
   'CSS: remove .lux-btn-ghost rules (desktop)',
 
   `.lux-btn-ghost {
@@ -73,10 +107,10 @@ applyPatch(
   `/* Stories strip */`
 );
 
-// ════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // PATCH 3 — Remove now-unused .lux-btn-ghost mobile override
-// ════════════════════════════════════════════════════════════════════════
-applyPatch(
+// ═══════════════════════════════════════════════════════════════════════
+patch(
   'CSS: remove .lux-btn-ghost mobile override',
 
   `  /* + Add Video ghost button */
@@ -87,11 +121,11 @@ applyPatch(
   `  /* Stories heading */`
 );
 
-// ════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // PATCH 4 — Remove the engraved corner-notched frame SVG from the gallery
 //           card (JSX)
-// ════════════════════════════════════════════════════════════════════════
-applyPatch(
+// ═══════════════════════════════════════════════════════════════════════
+patch(
   'JSX: remove engraved border-frame SVG from Photo Gallery card',
 
   `        <div className="lux-card">
@@ -113,10 +147,10 @@ applyPatch(
           <div className="lux-gallery-panel">`
 );
 
-// ════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // PATCH 5 — Strip the border / shimmer / frame-rule from .lux-card CSS
-// ════════════════════════════════════════════════════════════════════════
-applyPatch(
+// ═══════════════════════════════════════════════════════════════════════
+patch(
   'CSS: remove .lux-card border, gold shimmer, and .lux-card-frame rule',
 
   `/* ── GALLERY CARD — engraved SVG frame ──────────────────────────────────── */
@@ -164,7 +198,9 @@ applyPatch(
 `
 );
 
-// ── Done ─────────────────────────────────────────────────────────────────
-writeFileSync(SRC, code, 'utf8');
-console.log(`\n🎉 All ${patchCount} patches applied successfully to src/WeddingGallery.js`);
+// ── write back (restore original line endings) ─────────────────────────
+const out = hasCRLF ? src.replace(/\n/g, '\r\n') : src;
+writeFileSync(SRC, out, 'utf8');
+
+console.log('\n🎉 All patches applied successfully to src/WeddingGallery.js');
 console.log('   Run "npm start" to preview, or "npm run build" to build for deploy.');
