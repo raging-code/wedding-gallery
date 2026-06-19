@@ -213,10 +213,12 @@ async function sha256hex(msg) {
 }
 
 async function hmacHex(key, msg) {
-  const k   = typeof key === 'string'
-    ? await crypto.subtle.importKey('raw', new TextEncoder().encode(key),
-        { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-    : key;
+  // Always import the key — deriveSigningKey returns an ArrayBuffer, not a CryptoKey
+  const rawKey = typeof key === 'string'
+    ? new TextEncoder().encode(key)
+    : key instanceof ArrayBuffer ? key : new Uint8Array(key);
+  const k = await crypto.subtle.importKey('raw', rawKey,
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(msg));
   return hex(sig);
 }

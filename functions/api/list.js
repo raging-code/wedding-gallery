@@ -169,7 +169,11 @@ async function sha256hex(msg) {
 }
 
 async function hmacHex(key, msg) {
-  const buf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+  // Always import the key — deriveSigningKey returns an ArrayBuffer, not a CryptoKey
+  const rawKey = key instanceof ArrayBuffer ? key : new Uint8Array(key);
+  const k = await crypto.subtle.importKey('raw', rawKey,
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const buf = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(msg));
   return hex(buf);
 }
 
