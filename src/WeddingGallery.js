@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const LUXURY_CSS = `
 /* ── Fraunces (hero + display) · Manrope (body) ─────────────────────────── */
@@ -957,7 +957,6 @@ export default function WeddingGallery() {
   const [selected, setSelected]     = useState(new Set());
   const [showAll, setShowAll]       = useState(false);
   const [lightbox, setLightbox]     = useState({ open: false, idx: 0, zoomed: false });
-  const [activeTab, setActiveTab]   = useState('photos'); // 'photos' | 'videos'
   const fileInputRef     = useRef(null);
   const videoInputRef    = useRef(null);
 
