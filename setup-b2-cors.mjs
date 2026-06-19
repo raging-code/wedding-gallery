@@ -6,6 +6,24 @@ const [,, keyId, appKey, origin] = process.argv;
 
 if (!keyId || !appKey || !origin) {
   console.error('Usage: node setup-b2-cors.mjs KEY_ID APP_KEY ORIGIN');
+  console.error('Example: node setup-b2-cors.mjs "0055abc..." "K005abc..." "https://claudineandmarkgallery.pages.dev"');
+  process.exit(1);
+}
+
+// Guard: ORIGIN must be the URL your gallery is served FROM (same value as
+// SITE_ORIGIN in .env) — NOT a B2 storage endpoint (B2_*_ENDPOINT, e.g.
+// s3.us-east-005.backblazeb2.com). Passing the endpoint by mistake is exactly
+// what makes B2 reply "an allowedOrigin doesn't look like an origin".
+if (/backblazeb2\.com$/i.test(origin) || /^s3[.-]/i.test(origin)) {
+  console.error(`❌ "${origin}" looks like a B2 storage endpoint, not a site origin.`);
+  console.error('   ORIGIN must be the URL your gallery is served from, e.g.');
+  console.error('   https://claudineandmarkgallery.pages.dev — the same value as');
+  console.error('   SITE_ORIGIN in your .env, not B2_PHOTO1_ENDPOINT.');
+  process.exit(1);
+}
+if (!/^https?:\/\/[^/\s]+$/.test(origin)) {
+  console.error(`❌ "${origin}" doesn't look like a valid origin.`);
+  console.error('   It needs a scheme and no path, e.g. https://claudineandmarkgallery.pages.dev');
   process.exit(1);
 }
 
