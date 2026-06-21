@@ -761,7 +761,15 @@ footer a:hover,
    ───────────────────────────────────────────────────────────────────── */
 @keyframes pf-pagein {
   from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  to   { opacity: 1; }
+  /* NOTE: no transform in the "to" state on purpose.
+     If the to-keyframe includes transform:translateY(0), the animation
+     fill-mode:"both" leaves a computed transform on <body> after the
+     animation completes.  Any non-none transform on an ancestor breaks
+     position:fixed for ALL descendants (CSS spec §9.7) — so the lightbox
+     and reels would be positioned relative to the body top instead of the
+     viewport.  Keeping only opacity in "to" means the final fill state
+     has no transform, and position:fixed children work correctly. */
 }
 
 .pf-pagein {

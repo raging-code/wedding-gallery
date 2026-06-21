@@ -99,6 +99,18 @@
   /* ── 7. PAGE FADE-IN ──────────────────────────────────────── */
   function initPageFadeIn () {
     document.body.classList.add('pf-pagein');
+
+    // Belt-and-suspenders: remove the class once the animation finishes
+    // so no residual animated transform lingers on <body>.
+    // The CSS fix (no transform in the 'to' keyframe) is the primary
+    // guard; this cleanup is a safety net for browsers that may still
+    // hold a stale computed-style from the animation fill-mode.
+    function onEnd (e) {
+      if (e.animationName !== 'pf-pagein') return;
+      document.body.classList.remove('pf-pagein');
+      document.body.removeEventListener('animationend', onEnd);
+    }
+    document.body.addEventListener('animationend', onEnd);
   }
 
   /* ── INIT ─────────────────────────────────────────────────── */
