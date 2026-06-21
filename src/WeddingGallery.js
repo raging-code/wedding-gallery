@@ -716,6 +716,7 @@ body {
 ─────────────────────────────────────────────────────────────────────── */
 .lux-lightbox {
   position: fixed; inset: 0; z-index: 1000;
+  width: 100vw; height: 100vh; height: 100dvh;
   background: rgba(7, 2, 5, 0.97);
   display: none; align-items: center; justify-content: center; flex-direction: column;
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -733,7 +734,7 @@ body {
 
 .lux-lb-nav {
   position: absolute; top: 50%; transform: translateY(-50%);
-  width: 40px; height: 40px;
+  width: 40px; height: 40px; z-index: 4;
   background: transparent; border: 0.5px solid rgba(255,255,255,0.12);
   color: rgba(255,255,255,0.45); font-size: 22px;
   display: flex; align-items: center; justify-content: center;
@@ -743,13 +744,22 @@ body {
 .lux-lb-prev { left: 12px; }
 .lux-lb-next { right: 12px; }
 
-.lux-lb-img-wrap { max-width: 90vw; max-height: 72vh; display: flex; align-items: center; justify-content: center; }
+/* width:100% + position:relative + touch-action:pan-y → reliable full-bleed
+   centering on every viewport, and lets JS own horizontal swipe gestures
+   while still allowing native vertical scroll/pull-to-refresh. */
+.lux-lb-img-wrap {
+  max-width: 90vw; max-height: 72vh; width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; touch-action: pan-y;
+}
 .lux-lb-img {
   max-width: 100%; max-height: 100%; object-fit: contain;
   transition: transform .4s var(--ease-cinematic);
   box-shadow: 0 40px 80px rgba(0,0,0,0.55);
+  will-change: transform; user-select: none; -webkit-user-drag: none;
 }
-.lux-lb-img.zoomed { transform: scale(2.2); }
+.lux-lb-img.zoomed   { transform: scale(2.2); }
+.lux-lb-img.dragging { transition: none; }
 
 /* Filmstrip scrubber */
 .lux-lb-filmstrip {
@@ -904,6 +914,10 @@ body {
 
   /* Selection mode: always show checkboxes so guests can tap-to-select */
   .lux-selection-mode .lux-photo-item .lux-select-check { opacity: 1; }
+
+  /* Lightbox & Reels: desktop click-to-navigate gives way to native swipe */
+  .lux-lb-nav    { display: none; }
+  .lux-reels-nav { display: none; }
 }
 
 /* ── REELS — full-screen vertical video viewer (TikTok/Reels style) ───────── */
@@ -924,7 +938,10 @@ body {
 
 .lux-reel-slide {
   height: 100vh; height: 100dvh;
-  scroll-snap-align: start; scroll-snap-stop: always;
+  /* "normal" (not "always") is what lets a fast flick sail past the next
+     snap point instantly, while a slow/partial drag still settles on
+     whichever video is more dominant — true Reels/TikTok physics, free. */
+  scroll-snap-align: start; scroll-snap-stop: normal;
   display: flex; align-items: center; justify-content: center;
   position: relative;
 }
@@ -945,9 +962,42 @@ body {
 .lux-reels-mute  { bottom: 28px; right: 16px; }
 .lux-reels-close:hover, .lux-reels-mute:hover { background: rgba(0,0,0,0.55); border-color: rgba(255,255,255,0.45); }
 
+/* Desktop-only Prev/Next — hidden on touch devices (rule above) */
+.lux-reels-nav {
+  position: absolute; right: 18px; z-index: 5;
+  width: 42px; height: 42px; border-radius: 50%;
+  background: rgba(0,0,0,0.35); border: 0.5px solid rgba(255,255,255,0.25);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .25s; backdrop-filter: blur(4px);
+}
+.lux-reels-nav:hover    { background: rgba(0,0,0,0.55); border-color: rgba(255,255,255,0.45); }
+.lux-reels-nav:disabled { opacity: 0.22; cursor: default; pointer-events: none; }
+.lux-reels-prev { top: calc(50% - 56px); }
+.lux-reels-next { top: calc(50% + 14px); }
+
+/* Per-video seek/scrub bar — tap or drag to fast-forward or replay */
+.lux-reel-seek {
+  position: absolute; left: 14px; right: 14px; bottom: 18px; z-index: 6;
+  padding: 11px 0; cursor: pointer; touch-action: none;
+}
+.lux-reel-seek-track {
+  position: relative; height: 2.5px; border-radius: 2px;
+  background: rgba(255,255,255,0.28);
+}
+.lux-reel-seek-fill {
+  position: absolute; top: 0; left: 0; height: 100%; border-radius: 2px;
+  background: var(--gold-light);
+}
+.lux-reel-seek-handle {
+  position: absolute; top: 50%; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--gold-light); box-shadow: 0 0 0 3px rgba(0,0,0,0.22);
+  transform: translate(-50%, -50%);
+}
+
 @media (max-width: 639px) {
   .lux-reels-close { top: 14px; left: 12px; width: 40px; height: 40px; }
   .lux-reels-mute  { bottom: 22px; right: 12px; width: 40px; height: 40px; }
+  .lux-reel-seek   { left: 12px; right: 12px; bottom: 16px; }
 }
 
 `
@@ -1002,6 +1052,81 @@ async function b2List(type) {
   }));
 }
 
+// Per-video seek bar for the Reels viewer — tap or drag to fast-forward or
+// replay. Reads/writes the underlying <video> element directly through the
+// shared ref array, so dragging tracks the finger with zero extra
+// re-renders of the parent (only this small bar re-renders, ~4x/sec, and
+// only for whichever video is actually playing).
+function ReelSeekBar({ reelRefs, idx, active }) {
+  const [progress, setProgress] = useState(0);
+  const trackRef   = useRef(null);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    if (!active) return;
+    const video = reelRefs.current[idx];
+    if (!video) return;
+
+    const sync = () => {
+      if (draggingRef.current) return;
+      setProgress(video.duration ? video.currentTime / video.duration : 0);
+    };
+    video.addEventListener("timeupdate", sync);
+    video.addEventListener("loadedmetadata", sync);
+    sync();
+    return () => {
+      video.removeEventListener("timeupdate", sync);
+      video.removeEventListener("loadedmetadata", sync);
+    };
+  }, [reelRefs, idx, active]);
+
+  function ratioFromPointer(e) {
+    const track = trackRef.current;
+    if (!track) return 0;
+    const rect = track.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  }
+
+  function seekTo(ratio) {
+    const video = reelRefs.current[idx];
+    if (!video || !video.duration || !isFinite(video.duration)) return;
+    video.currentTime = ratio * video.duration;
+    setProgress(ratio);
+  }
+
+  function handlePointerDown(e) {
+    e.stopPropagation(); // don't let it bubble into the video's play/pause tap
+    draggingRef.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    seekTo(ratioFromPointer(e));
+  }
+
+  function handlePointerMove(e) {
+    if (!draggingRef.current) return;
+    seekTo(ratioFromPointer(e));
+  }
+
+  function handlePointerUp() {
+    draggingRef.current = false;
+  }
+
+  return (
+    <div
+      className="lux-reel-seek"
+      ref={trackRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      <div className="lux-reel-seek-track">
+        <div className="lux-reel-seek-fill"   style={{ width: `${progress * 100}%` }} />
+        <div className="lux-reel-seek-handle" style={{ left:  `${progress * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
 export default function WeddingGallery() {
   const [photos, setPhotos]         = useState([]);
   const [videos, setVideos]         = useState([]);
@@ -1020,6 +1145,8 @@ export default function WeddingGallery() {
   const videoInputRef    = useRef(null);
   const reelRefs          = useRef([]);
   const reelContainerRef  = useRef(null);
+  const lbImgRef           = useRef(null);
+  const lbDragRef          = useRef({ active: false, startX: 0, startY: 0, locked: null, startTime: 0 });
 
   useEffect(() => {
     let s = document.getElementById("lux-css");
@@ -1056,15 +1183,17 @@ export default function WeddingGallery() {
     return () => window.removeEventListener("keydown", handler);
   }, [lightbox, photos.length]);
 
-  // Reels: Escape closes the viewer
+  // Reels: Escape closes the viewer, ↑ / ↓ move between videos (desktop)
   useEffect(() => {
     if (!reels.open) return;
     const handler = (e) => {
-      if (e.key === "Escape") setReels(r => ({ ...r, open: false }));
+      if (e.key === "Escape")    setReels(r => ({ ...r, open: false }));
+      if (e.key === "ArrowUp")   goToReel(reels.idx - 1);
+      if (e.key === "ArrowDown") goToReel(reels.idx + 1);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [reels.open]);
+  }, [reels.open, reels.idx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reels: jump straight to the tapped video, no scroll animation
   useEffect(() => {
@@ -1075,7 +1204,9 @@ export default function WeddingGallery() {
     });
   }, [reels.open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reels: autoplay whichever video is actually in view, pause the rest
+  // Reels: autoplay whichever video is actually in view, pause the rest —
+  // and keep reels.idx in sync with whatever is dominant (drives the
+  // Prev/Next buttons and keyboard nav even after a manual swipe/scroll).
   useEffect(() => {
     if (!reels.open) return;
     const els = reelRefs.current.filter(Boolean);
@@ -1084,6 +1215,8 @@ export default function WeddingGallery() {
         const vid = entry.target;
         if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
           vid.play().catch(() => {});
+          const idx = Number(vid.dataset.reelIdx);
+          setReels(r => (r.idx === idx ? r : { ...r, idx }));
         } else {
           vid.pause();
         }
@@ -1154,6 +1287,12 @@ export default function WeddingGallery() {
     setReels(r => ({ ...r, open: false }));
   }
 
+  function goToReel(targetIdx) {
+    if (targetIdx < 0 || targetIdx >= videos.length) return;
+    const el = reelRefs.current[targetIdx];
+    el?.closest(".lux-reel-slide")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function openLightbox(idx) {
     if (selectMode) { toggleSelect(idx); return; }
     setLightbox({ open: true, idx, zoomed: false });
@@ -1161,6 +1300,67 @@ export default function WeddingGallery() {
 
   function navPhoto(dir) {
     setLightbox(l => ({ ...l, idx: (l.idx + dir + photos.length) % photos.length, zoomed: false }));
+  }
+
+  // Lightbox swipe — mirrors Facebook's photo viewer:
+  //  • the photo follows your finger while dragging
+  //  • release before the "dominant" threshold (~⅓ of the screen) →
+  //    springs back to the photo you started on
+  //  • release past that threshold, OR a fast flick (judged by velocity,
+  //    not distance) → commits instantly to the next/previous photo
+  function lbDragStart(e) {
+    if (lightbox.zoomed || photos.length < 2) return;
+    lbDragRef.current = { active: true, startX: e.clientX, startY: e.clientY, locked: null, startTime: Date.now() };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function lbDragMove(e) {
+    const drag = lbDragRef.current;
+    if (!drag.active) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+
+    if (drag.locked === null) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; // ignore micro-jitter / taps
+      drag.locked = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (drag.locked !== "x") return; // a vertical gesture — not ours to handle
+
+    if (lbImgRef.current) {
+      lbImgRef.current.classList.add("dragging");
+      lbImgRef.current.style.transform = `translateX(${dx}px)`;
+    }
+  }
+
+  function lbDragEnd(e) {
+    const drag = lbDragRef.current;
+    if (!drag.active) return;
+    drag.active = false;
+
+    const img = lbImgRef.current;
+    const wasHorizontal = drag.locked === "x";
+    if (img) { img.classList.remove("dragging"); img.style.transform = ""; }
+    if (!wasHorizontal) return;
+
+    const dx = e.clientX - drag.startX;
+    const elapsed = Math.max(1, Date.now() - drag.startTime);
+    const velocity = Math.abs(dx) / elapsed; // px/ms
+
+    const FAST_FLICK_VELOCITY = 0.55;  // px/ms — a quick flick commits instantly
+    const DOMINANT_FRACTION   = 0.32;  // dragged past ~⅓ of the screen = committed
+
+    const passedThreshold = Math.abs(dx) > window.innerWidth * DOMINANT_FRACTION;
+    if (velocity > FAST_FLICK_VELOCITY || passedThreshold) {
+      navPhoto(dx < 0 ? 1 : -1);
+    }
+    // Otherwise: the transform reset above (with the transition re-enabled
+    // by removing "dragging") animates it right back to the dominant photo.
+  }
+
+  function lbDragCancel() {
+    lbDragRef.current.active = false;
+    const img = lbImgRef.current;
+    if (img) { img.classList.remove("dragging"); img.style.transform = ""; }
   }
 
   function toggleSelect(idx) {
@@ -1538,11 +1738,19 @@ export default function WeddingGallery() {
         </button>
         <button className="lux-lb-nav lux-lb-prev" onClick={() => navPhoto(-1)}>‹</button>
         <button className="lux-lb-nav lux-lb-next" onClick={() => navPhoto(1)}>›</button>
-        <div className="lux-lb-img-wrap">
+        <div
+          className="lux-lb-img-wrap"
+          onPointerDown={lbDragStart}
+          onPointerMove={lbDragMove}
+          onPointerUp={lbDragEnd}
+          onPointerCancel={lbDragCancel}
+        >
           {lightbox.open && currentImg && (
             <img
+              ref={lbImgRef}
               className={`lux-lb-img${lightbox.zoomed ? " zoomed" : ""}`}
               src={currentImg.url} alt=""
+              draggable={false}
             />
           )}
         </div>
@@ -1591,17 +1799,38 @@ export default function WeddingGallery() {
             </svg>
           )}
         </button>
+        <button
+          className="lux-reels-nav lux-reels-prev"
+          onClick={() => goToReel(reels.idx - 1)}
+          disabled={reels.idx <= 0}
+          aria-label="Previous video"
+        >
+          <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+            <path d="M4 11l5-5 5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button
+          className="lux-reels-nav lux-reels-next"
+          onClick={() => goToReel(reels.idx + 1)}
+          disabled={reels.idx >= videos.length - 1}
+          aria-label="Next video"
+        >
+          <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+            <path d="M4 7l5 5 5-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <div className="lux-reels-scroll" ref={reelContainerRef}>
           {reels.open && videos.map((vid, idx) => (
             <div className="lux-reel-slide" key={vid.id}>
               <video
-                ref={el => (reelRefs.current[idx] = el)}
+                ref={el => { if (el) el.dataset.reelIdx = idx; reelRefs.current[idx] = el; }}
                 src={vid.url}
                 className="lux-reel-video"
                 loop playsInline muted={reelMuted}
                 preload="metadata"
                 onClick={(e) => { e.target.paused ? e.target.play().catch(() => {}) : e.target.pause(); }}
               />
+              <ReelSeekBar reelRefs={reelRefs} idx={idx} active={reels.open} />
             </div>
           ))}
         </div>
