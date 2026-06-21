@@ -373,6 +373,19 @@ body {
   background-size: 200%; animation: shimmer 3.8s ease-in-out infinite; pointer-events: none;
 }
 
+/* Play-icon overlay on video story thumbnails */
+.lux-story-play {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.lux-story-play::before {
+  content: '';
+  position: absolute; width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(0,0,0,0.32); border: 0.5px solid rgba(255,255,255,0.5);
+}
+.lux-story-play svg { position: relative; z-index: 1; margin-left: 2px; }
+
 @media (min-width: 480px) {
   .lux-story-add, .lux-story-ph { width: 112px; height: 196px; }
 }
@@ -893,6 +906,50 @@ body {
   .lux-selection-mode .lux-photo-item .lux-select-check { opacity: 1; }
 }
 
+/* ── REELS — full-screen vertical video viewer (TikTok/Reels style) ───────── */
+.lux-reels {
+  position: fixed; inset: 0; z-index: 1100;
+  background: #000;
+  display: none;
+}
+.lux-reels.open { display: block; animation: fadeIn .25s ease both; }
+
+.lux-reels-scroll {
+  height: 100vh; height: 100dvh;
+  overflow-y: auto; scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.lux-reels-scroll::-webkit-scrollbar { display: none; }
+
+.lux-reel-slide {
+  height: 100vh; height: 100dvh;
+  scroll-snap-align: start; scroll-snap-stop: always;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.lux-reel-video {
+  width: 100%; height: 100%;
+  object-fit: cover; cursor: pointer;
+  background: #000;
+}
+
+.lux-reels-close, .lux-reels-mute {
+  position: absolute; z-index: 5;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(0,0,0,0.35); border: 0.5px solid rgba(255,255,255,0.25);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .25s; backdrop-filter: blur(4px);
+}
+.lux-reels-close { top: 18px; left: 16px; }
+.lux-reels-mute  { bottom: 28px; right: 16px; }
+.lux-reels-close:hover, .lux-reels-mute:hover { background: rgba(0,0,0,0.55); border-color: rgba(255,255,255,0.45); }
+
+@media (max-width: 639px) {
+  .lux-reels-close { top: 14px; left: 12px; width: 40px; height: 40px; }
+  .lux-reels-mute  { bottom: 22px; right: 12px; width: 40px; height: 40px; }
+}
+
 `
 
 
@@ -957,8 +1014,12 @@ export default function WeddingGallery() {
   const [selected, setSelected]     = useState(new Set());
   const [showAll, setShowAll]       = useState(false);
   const [lightbox, setLightbox]     = useState({ open: false, idx: 0, zoomed: false });
+  const [reels, setReels]           = useState({ open: false, idx: 0 });
+  const [reelMuted, setReelMuted]   = useState(true);
   const fileInputRef     = useRef(null);
   const videoInputRef    = useRef(null);
+  const reelRefs          = useRef([]);
+  const reelContainerRef  = useRef(null);
 
   useEffect(() => {
     let s = document.getElementById("lux-css");
@@ -994,6 +1055,43 @@ export default function WeddingGallery() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [lightbox, photos.length]);
+
+  // Reels: Escape closes the viewer
+  useEffect(() => {
+    if (!reels.open) return;
+    const handler = (e) => {
+      if (e.key === "Escape") setReels(r => ({ ...r, open: false }));
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [reels.open]);
+
+  // Reels: jump straight to the tapped video, no scroll animation
+  useEffect(() => {
+    if (!reels.open) return;
+    requestAnimationFrame(() => {
+      const el = reelRefs.current[reels.idx];
+      el?.closest(".lux-reel-slide")?.scrollIntoView({ block: "start" });
+    });
+  }, [reels.open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reels: autoplay whichever video is actually in view, pause the rest
+  useEffect(() => {
+    if (!reels.open) return;
+    const els = reelRefs.current.filter(Boolean);
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const vid = entry.target;
+        if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+          vid.play().catch(() => {});
+        } else {
+          vid.pause();
+        }
+      });
+    }, { threshold: [0, 0.6, 1] });
+    els.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, [reels.open, videos.length]);
 
   function handleFiles(fileList) {
     Array.from(fileList).filter(f => f.type.startsWith("image/"))
@@ -1045,6 +1143,15 @@ export default function WeddingGallery() {
     } catch (err) {
       setUploadState({ active: false, progress: 0, error: err.message });
     }
+  }
+
+  function openReels(idx) {
+    setReels({ open: true, idx });
+  }
+
+  function closeReels() {
+    reelRefs.current.forEach(v => v && v.pause());
+    setReels(r => ({ ...r, open: false }));
   }
 
   function openLightbox(idx) {
@@ -1223,14 +1330,24 @@ export default function WeddingGallery() {
               <div className="lux-shimmer" />
             </div>
           ))}
-          {!videosLoading && videos.map(vid => (
-            <div className="lux-story-ph" key={vid.id} style={{ cursor: 'pointer' }}>
+          {!videosLoading && videos.map((vid, idx) => (
+            <div
+              className="lux-story-ph"
+              key={vid.id}
+              style={{ cursor: 'pointer' }}
+              onClick={() => openReels(idx)}
+            >
               <video
                 src={vid.url}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }}
-                controls muted playsInline
+                muted playsInline
                 preload="metadata"
               />
+              <div className="lux-story-play">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M5 3.5v9l8-4.5-8-4.5z" fill="#fff" />
+                </svg>
+              </div>
             </div>
           ))}
         </div>
@@ -1443,6 +1560,48 @@ export default function WeddingGallery() {
               onClick={() => setLightbox(l => ({ ...l, idx, zoomed: false }))}
             >
               <img src={photo.url} alt="" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* REELS — full-screen vertical video viewer (TikTok/Reels style) */}
+      <div className={`lux-reels${reels.open ? " open" : ""}`}>
+        <button className="lux-reels-close" onClick={closeReels} aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+            <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        </button>
+        <button
+          className="lux-reels-mute"
+          onClick={() => setReelMuted(m => !m)}
+          aria-label={reelMuted ? "Unmute" : "Mute"}
+        >
+          {reelMuted ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M3 9v6h4l5 5V4L7 9H3z" fill="currentColor" />
+              <line x1="16" y1="8" x2="22" y2="16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <line x1="22" y1="8" x2="16" y2="16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M3 9v6h4l5 5V4L7 9H3z" fill="currentColor" />
+              <path d="M16.5 8.5a5 5 0 010 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+              <path d="M19 6a8.5 8.5 0 010 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none" />
+            </svg>
+          )}
+        </button>
+        <div className="lux-reels-scroll" ref={reelContainerRef}>
+          {reels.open && videos.map((vid, idx) => (
+            <div className="lux-reel-slide" key={vid.id}>
+              <video
+                ref={el => (reelRefs.current[idx] = el)}
+                src={vid.url}
+                className="lux-reel-video"
+                loop playsInline muted={reelMuted}
+                preload="metadata"
+                onClick={(e) => { e.target.paused ? e.target.play().catch(() => {}) : e.target.pause(); }}
+              />
             </div>
           ))}
         </div>
