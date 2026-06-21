@@ -508,6 +508,23 @@ body {
   font-size: 11.5px; font-weight: 300; letter-spacing: 0.05em; color: var(--ink-40);
 }
 
+/* ── GUEST NAME FIELD — required before any upload, remembered locally so
+   a returning guest never has to retype it ─────────────────────────────── */
+.lux-name-field { margin-bottom: 14px; text-align: left; }
+.lux-name-label {
+  display: block; font-family: var(--font-body); font-size: 10px; font-weight: 400;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-40); margin-bottom: 6px;
+}
+.lux-name-input {
+  width: 100%; padding: 12px 14px; font-family: var(--font-body); font-size: 14px;
+  color: var(--ink); background: rgba(255,255,255,0.65);
+  border: 1px solid var(--pink-border); border-radius: 4px; outline: none;
+  transition: border-color .2s, background .2s;
+}
+.lux-name-input:focus { border-color: var(--gold); background: var(--white); }
+.lux-name-field-video { margin: 10px 2px 4px; max-width: 360px; }
+.lux-name-error { color: #c45; font-size: 11px; margin-top: 6px; }
+
 /* ── GALLERY CARD ─────────────────────────────────────────────────────── */
 .lux-card {
   background: var(--white);
@@ -717,81 +734,84 @@ body {
 .lux-lightbox {
   position: fixed; inset: 0; z-index: 1000;
   width: 100vw; height: 100vh; height: 100dvh;
-  background: rgba(7, 2, 5, 0.97);
+  background: #000;
   display: none; align-items: center; justify-content: center; flex-direction: column;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
-.lux-lightbox.open { display: flex; animation: fadeIn .3s ease both; }
+.lux-lightbox.open { display: flex; animation: fadeIn .25s ease both; }
+
+/* Top bar — gradient fade like Facebook's photo-viewer header. Holds the
+   uploader credit + position counter so the canvas below can be a true
+   full-bleed black letterbox with zero competing chrome. */
+.lux-lb-topbar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 70px 16px 20px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 100%);
+  pointer-events: none;
+}
+.lux-lb-credit {
+  font-family: var(--font-body); font-size: 12px; font-weight: 400;
+  color: rgba(255,255,255,0.78); letter-spacing: 0.02em;
+}
+.lux-lb-credit b { color: #fff; font-weight: 500; }
+.lux-lb-counter {
+  font-family: var(--font-body); font-size: 11px; font-weight: 400;
+  color: rgba(255,255,255,0.55); letter-spacing: 0.06em; white-space: nowrap;
+}
 
 .lux-lb-close {
-  position: absolute; top: 18px; right: 20px;
-  width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(255,255,255,0.06); border: 0.5px solid rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.55); cursor: pointer; transition: all .25s;
+  position: absolute; top: 14px; right: 16px; z-index: 6;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(0,0,0,0.4); border: none;
+  color: rgba(255,255,255,0.85); cursor: pointer; transition: all .2s;
   display: flex; align-items: center; justify-content: center;
 }
-.lux-lb-close:hover { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.30); }
+.lux-lb-close:hover { background: rgba(0,0,0,0.65); color: #fff; }
 
+/* Facebook-style circular nav — solid dark disc, white chevron, always
+   visible on pointer devices; hidden on touch (see hover:none rule below)
+   in favor of the native swipe gesture, exactly like Facebook's mobile
+   photo viewer. */
 .lux-lb-nav {
   position: absolute; top: 50%; transform: translateY(-50%);
-  width: 40px; height: 40px; z-index: 4;
-  background: transparent; border: 0.5px solid rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.45); font-size: 22px;
+  width: 44px; height: 44px; z-index: 4; border-radius: 50%;
+  background: rgba(0,0,0,0.4); border: none;
+  color: #fff;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all .25s;
+  cursor: pointer; transition: all .2s;
 }
-.lux-lb-nav:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.34); }
-.lux-lb-prev { left: 12px; }
-.lux-lb-next { right: 12px; }
+.lux-lb-nav:hover { background: rgba(0,0,0,0.65); }
+.lux-lb-prev { left: 20px; }
+.lux-lb-next { right: 20px; }
 
-/* width:100% + position:relative + touch-action:pan-y → reliable full-bleed
-   centering on every viewport, and lets JS own horizontal swipe gestures
-   while still allowing native vertical scroll/pull-to-refresh. */
+/* Full-bleed canvas — fills the entire viewport edge to edge.
+   object-fit:contain on the <img> does the letterboxing, so any blank
+   space left by the image's own aspect ratio is just the lightbox's black
+   background showing through — exactly how Facebook/Google Photos render
+   full-screen media, and the image is always perfectly centered. */
 .lux-lb-img-wrap {
-  max-width: 90vw; max-height: 72vh; width: 100%;
+  width: 100vw; height: 100vh; height: 100dvh;
   display: flex; align-items: center; justify-content: center;
   position: relative; touch-action: pan-y;
 }
 .lux-lb-img {
   max-width: 100%; max-height: 100%; object-fit: contain;
   transition: transform .4s var(--ease-cinematic);
-  box-shadow: 0 40px 80px rgba(0,0,0,0.55);
   will-change: transform; user-select: none; -webkit-user-drag: none;
 }
 .lux-lb-img.zoomed   { transform: scale(2.2); }
 .lux-lb-img.dragging { transition: none; }
 
-/* Filmstrip scrubber */
-.lux-lb-filmstrip {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  display: flex; align-items: center; justify-content: center;
-  gap: 3px; padding: 12px 16px 18px;
-  background: linear-gradient(0deg, rgba(0,0,0,0.72) 0%, transparent 100%);
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
-}
-.lux-lb-filmstrip::-webkit-scrollbar { display: none; }
-
-.lux-lb-thumb {
-  flex-shrink: 0;
-  width: 38px; height: 28px;
-  background: rgba(255,255,255,0.10);
-  border: 1.5px solid transparent;
-  overflow: hidden; cursor: pointer; transition: all .25s; opacity: 0.52;
-}
-.lux-lb-thumb img { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block; }
-.lux-lb-thumb.active { border-color: var(--gold); opacity: 1; box-shadow: 0 0 0 1px rgba(184,144,74,0.5); }
-.lux-lb-thumb:hover:not(.active) { opacity: 0.82; border-color: rgba(255,255,255,0.25); }
-
-/* Zoom toggle — floats above filmstrip */
+/* Zoom toggle — floats bottom-center now that the filmstrip is gone */
 .lux-lb-zoom {
-  position: absolute; bottom: 80px;
-  background: transparent; border: 0.5px solid rgba(255,255,255,0.16);
-  color: rgba(255,255,255,0.42);
+  position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 5;
+  background: rgba(0,0,0,0.4); border: none;
+  color: rgba(255,255,255,0.75);
   font-family: var(--font-body); font-size: 10px; font-weight: 400;
   letter-spacing: 0.16em; text-transform: uppercase;
-  padding: 8px 18px; cursor: pointer; transition: all .25s;
+  padding: 9px 20px; border-radius: 999px; cursor: pointer; transition: all .2s;
 }
-.lux-lb-zoom:hover { color: #fff; border-color: rgba(184,144,74,0.55); }
+.lux-lb-zoom:hover { color: #fff; background: rgba(0,0,0,0.6); }
 
 /* ── FLOATING PETALS ────────────────────────────────────────────── */
 @keyframes petalFall {
@@ -887,23 +907,16 @@ body {
 /* ── Lightbox: all phones ────────────────────────────────────────────────── */
 @media (max-width: 639px) {
 
+  /* Top bar: tighter padding, smaller type */
+  .lux-lb-topbar  { padding: 12px 56px 12px 14px; }
+  .lux-lb-credit  { font-size: 11px; }
+  .lux-lb-counter { font-size: 10px; }
+
   /* Close button: 44×44 minimum touch target */
-  .lux-lb-close { width: 44px; height: 44px; top: 12px; right: 12px; }
+  .lux-lb-close { width: 40px; height: 40px; top: 10px; right: 10px; }
 
-  /* Nav arrows: edge-to-edge vertical strips, easy to hit with thumb */
-  .lux-lb-nav  { width: 44px; height: 56px; font-size: 28px; }
-  .lux-lb-prev { left: 0; }
-  .lux-lb-next { right: 0; }
-
-  /* Image area: give filmstrip space below */
-  .lux-lb-img-wrap { max-height: 60vh; max-width: 100vw; }
-
-  /* Zoom toggle: raise it just above the filmstrip */
-  .lux-lb-zoom { bottom: 68px; padding: 10px 18px; }
-
-  /* Filmstrip: slightly larger thumbs for touch precision */
-  .lux-lb-filmstrip { padding: 8px 12px 12px; gap: 4px; }
-  .lux-lb-thumb     { width: 44px; height: 32px; }
+  /* Zoom toggle: raise it slightly off the safe-area edge */
+  .lux-lb-zoom { bottom: 18px; padding: 8px 16px; }
 }
 
 /* ── Touch devices: fix hover-only states ────────────────────────────────── */
@@ -947,33 +960,45 @@ body {
 }
 .lux-reel-video {
   width: 100%; height: 100%;
-  object-fit: cover; cursor: pointer;
+  /* contain (not cover) → the whole video is always visible, best-fit
+     inside the frame; any leftover space is letterboxed by the slide's
+     own black background instead of cropping the footage. */
+  object-fit: contain; cursor: pointer;
   background: #000;
 }
 
 .lux-reels-close, .lux-reels-mute {
   position: absolute; z-index: 5;
   width: 38px; height: 38px; border-radius: 50%;
-  background: rgba(0,0,0,0.35); border: 0.5px solid rgba(255,255,255,0.25);
+  background: rgba(0,0,0,0.4); border: none;
   color: #fff; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all .25s; backdrop-filter: blur(4px);
+  cursor: pointer; transition: all .2s;
 }
 .lux-reels-close { top: 18px; left: 16px; }
 .lux-reels-mute  { bottom: 28px; right: 16px; }
-.lux-reels-close:hover, .lux-reels-mute:hover { background: rgba(0,0,0,0.55); border-color: rgba(255,255,255,0.45); }
+.lux-reels-close:hover, .lux-reels-mute:hover { background: rgba(0,0,0,0.65); }
 
 /* Desktop-only Prev/Next — hidden on touch devices (rule above) */
 .lux-reels-nav {
   position: absolute; right: 18px; z-index: 5;
-  width: 42px; height: 42px; border-radius: 50%;
-  background: rgba(0,0,0,0.35); border: 0.5px solid rgba(255,255,255,0.25);
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(0,0,0,0.4); border: none;
   color: #fff; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all .25s; backdrop-filter: blur(4px);
+  cursor: pointer; transition: all .2s;
 }
-.lux-reels-nav:hover    { background: rgba(0,0,0,0.55); border-color: rgba(255,255,255,0.45); }
+.lux-reels-nav:hover    { background: rgba(0,0,0,0.65); }
 .lux-reels-nav:disabled { opacity: 0.22; cursor: default; pointer-events: none; }
 .lux-reels-prev { top: calc(50% - 56px); }
 .lux-reels-next { top: calc(50% + 14px); }
+
+/* Uploader credit caption — bottom-left, above the seek bar, just like
+   Facebook/Instagram Reels captions */
+.lux-reel-caption {
+  position: absolute; left: 16px; right: 70px; bottom: 56px; z-index: 5;
+  font-family: var(--font-body); font-size: 12px; color: rgba(255,255,255,0.85);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.65); pointer-events: none;
+}
+.lux-reel-caption b { color: #fff; font-weight: 500; }
 
 /* Per-video seek/scrub bar — tap or drag to fast-forward or replay */
 .lux-reel-seek {
@@ -998,6 +1023,7 @@ body {
   .lux-reels-close { top: 14px; left: 12px; width: 40px; height: 40px; }
   .lux-reels-mute  { bottom: 22px; right: 12px; width: 40px; height: 40px; }
   .lux-reel-seek   { left: 12px; right: 12px; bottom: 16px; }
+  .lux-reel-caption { left: 12px; right: 12px; bottom: 50px; font-size: 11px; }
 }
 
 `
@@ -1008,15 +1034,50 @@ body {
 // In local dev (npm start) you need to run: npx wrangler pages dev build --compatibility-date 2024-01-01
 const API_BASE = '';  // empty = same origin (works for both Pages and local wrangler dev)
 
-/** Upload a single file → returns the public B2 URL */
-async function b2Upload(file, type) {
+// ── Guest-name ↔ filename encoding ───────────────────────────────────────
+// /api/list only ever round-trips the B2 object key (no custom metadata,
+// which would need a HEAD request per item to read back). So the guest's
+// name is embedded directly in the uploaded filename instead, as
+// "g_<base64url-name>.<ext>". Base64url's alphabet (A-Z a-z 0-9 - _) is a
+// subset of the server's own [a-zA-Z0-9._-] filename sanitizer, so it
+// passes through untouched — and because it's a real byte-level encoding
+// (not stripped ASCII), accented/non-Latin names round-trip perfectly.
+function encodeNameForKey(name) {
+  const trimmed = (name || '').trim().slice(0, 60);
+  const bytes = new TextEncoder().encode(trimmed);
+  let binary = '';
+  bytes.forEach(b => { binary += String.fromCharCode(b); });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function decodeNameFromKey(key) {
+  const base = (key || '').split('/').pop() || '';
+  const stripped = base.replace(/^\d+_/, ''); // strip the server's Date.now()_ prefix
+  const m = stripped.match(/^g_([A-Za-z0-9_-]+)\./);
+  if (!m) return null;
+  try {
+    let b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const binary = atob(b64);
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    const name = new TextDecoder().decode(bytes).trim();
+    return name || null;
+  } catch { return null; }
+}
+
+/** Upload a single file → returns the public B2 URL. `uploaderName` is
+ *  required and gets embedded in the stored filename (see above). */
+async function b2Upload(file, type, uploaderName) {
+  const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = extMatch ? extMatch[1].toLowerCase() : (type === 'video' ? 'mp4' : 'jpg');
+  const encodedFilename = `g_${encodeNameForKey(uploaderName)}.${ext}`;
+
   // 1. Ask our server-side Function for a presigned PUT URL
   const metaRes = await fetch(`${API_BASE}/api/upload`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type,
-      filename:    file.name,
+      filename:    encodedFilename,
       contentType: file.type,
       sizeBytes:   file.size,
     }),
@@ -1049,6 +1110,7 @@ async function b2List(type) {
     name: item.key.split('/').pop(),
     size: item.size,
     uploaded: item.uploaded,
+    uploaderName: decodeNameFromKey(item.key),
   }));
 }
 
@@ -1141,6 +1203,9 @@ export default function WeddingGallery() {
   const [lightbox, setLightbox]     = useState({ open: false, idx: 0, zoomed: false });
   const [reels, setReels]           = useState({ open: false, idx: 0 });
   const [reelMuted, setReelMuted]   = useState(true);
+  const [guestName, setGuestName]   = useState(() => {
+    try { return localStorage.getItem('lux_guest_name') || ''; } catch { return ''; }
+  });
   const fileInputRef     = useRef(null);
   const videoInputRef    = useRef(null);
   const reelRefs          = useRef([]);
@@ -1153,6 +1218,31 @@ export default function WeddingGallery() {
     if (!s) { s = document.createElement("style"); s.id = "lux-css"; document.head.appendChild(s); }
     s.textContent = LUXURY_CSS;
   }, []);
+
+  // Lock background scroll while the Lightbox or Reels viewer is open —
+  // uses the iOS-safe "fixed body + restore scrollY" technique so the page
+  // behind can never rubber-band/scroll, even on mobile Safari.
+  useEffect(() => {
+    const shouldLock = lightbox.open || reels.open;
+    if (shouldLock) {
+      const scrollY = window.scrollY;
+      document.body.dataset.lockedScrollY = String(scrollY);
+      document.body.style.position = 'fixed';
+      document.body.style.top    = `-${scrollY}px`;
+      document.body.style.left   = '0';
+      document.body.style.right  = '0';
+      document.body.style.width  = '100%';
+    } else if (document.body.dataset.lockedScrollY !== undefined) {
+      const scrollY = parseInt(document.body.dataset.lockedScrollY || '0', 10);
+      document.body.style.position = '';
+      document.body.style.top    = '';
+      document.body.style.left   = '';
+      document.body.style.right  = '';
+      document.body.style.width  = '';
+      delete document.body.dataset.lockedScrollY;
+      window.scrollTo(0, scrollY);
+    }
+  }, [lightbox.open, reels.open]);
 
   // Load photos from B2 on mount
   useEffect(() => {
@@ -1226,6 +1316,11 @@ export default function WeddingGallery() {
     return () => observer.disconnect();
   }, [reels.open, videos.length]);
 
+  function updateGuestName(value) {
+    setGuestName(value);
+    try { localStorage.setItem('lux_guest_name', value); } catch { /* private mode, etc. */ }
+  }
+
   function handleFiles(fileList) {
     Array.from(fileList).filter(f => f.type.startsWith("image/"))
       .slice(0, 20 - previews.length)
@@ -1245,13 +1340,15 @@ export default function WeddingGallery() {
 
   async function uploadPhotos() {
     if (!previews.length) return;
+    const name = guestName.trim();
+    if (!name) { setUploadState(s => ({ ...s, error: 'Please enter your name first' })); return; }
     setUploadState({ active: true, progress: 0, error: null });
     try {
       const uploaded = [];
       for (let i = 0; i < previews.length; i++) {
         const p = previews[i];
-        const publicUrl = await b2Upload(p.file, 'photo');
-        uploaded.push({ id: Date.now() + i, url: publicUrl, name: p.name });
+        const publicUrl = await b2Upload(p.file, 'photo', name);
+        uploaded.push({ id: Date.now() + i, url: publicUrl, name: p.name, uploaderName: name });
         setUploadState(s => ({ ...s, progress: Math.round(((i + 1) / previews.length) * 100) }));
         URL.revokeObjectURL(p.url);
       }
@@ -1265,10 +1362,12 @@ export default function WeddingGallery() {
 
   async function uploadVideo() {
     if (!videoPreview) return;
+    const name = guestName.trim();
+    if (!name) { setUploadState(s => ({ ...s, error: 'Please enter your name first' })); return; }
     setUploadState({ active: true, progress: 0, error: null });
     try {
-      const publicUrl = await b2Upload(videoPreview.file, 'video');
-      setVideos(prev => [{ id: Date.now(), url: publicUrl, name: videoPreview.name }, ...prev]);
+      const publicUrl = await b2Upload(videoPreview.file, 'video', name);
+      setVideos(prev => [{ id: Date.now(), url: publicUrl, name: videoPreview.name, uploaderName: name }, ...prev]);
       URL.revokeObjectURL(videoPreview.url);
       setVideoPreview(null);
       setUploadState({ active: false, progress: 100, error: null });
@@ -1488,12 +1587,14 @@ export default function WeddingGallery() {
               />
               <button
                 onClick={uploadVideo}
-                disabled={uploadState.active}
+                disabled={uploadState.active || !guestName.trim()}
                 style={{
                   position: 'absolute', bottom: 4, left: 4, right: 4,
                   background: 'rgba(184,144,74,0.9)', color: '#fff',
                   border: 'none', borderRadius: 6, fontSize: 10,
-                  padding: '4px 0', cursor: 'pointer', fontFamily: 'var(--font-body)'
+                  padding: '4px 0', fontFamily: 'var(--font-body)',
+                  cursor: (uploadState.active || !guestName.trim()) ? 'not-allowed' : 'pointer',
+                  opacity: (!uploadState.active && !guestName.trim()) ? 0.5 : 1,
                 }}
               >
                 {uploadState.active ? `${uploadState.progress}%` : 'Upload'}
@@ -1552,6 +1653,23 @@ export default function WeddingGallery() {
           ))}
         </div>
 
+        {videoPreview && (
+          <div className="lux-name-field lux-name-field-video">
+            <label className="lux-name-label" htmlFor="lux-guest-name-video">Your Name *</label>
+            <input
+              id="lux-guest-name-video"
+              className="lux-name-input"
+              type="text"
+              value={guestName}
+              onChange={e => updateGuestName(e.target.value)}
+              placeholder="e.g. Maria Santos"
+              maxLength={60}
+              autoComplete="name"
+            />
+            {uploadState.error && <div className="lux-name-error">{uploadState.error}</div>}
+          </div>
+        )}
+
 
         {/* GALLERY — inside white card/widget */}
         <div className="lux-inner-label-row"><span className="lux-inner-label-txt">Shared Memories</span><div className="lux-inner-label-rule" /></div>
@@ -1602,6 +1720,19 @@ export default function WeddingGallery() {
 
             {previews.length > 0 && (
               <div className="lux-send-bar">
+                <div className="lux-name-field">
+                  <label className="lux-name-label" htmlFor="lux-guest-name-photo">Your Name *</label>
+                  <input
+                    id="lux-guest-name-photo"
+                    className="lux-name-input"
+                    type="text"
+                    value={guestName}
+                    onChange={e => updateGuestName(e.target.value)}
+                    placeholder="e.g. Maria Santos"
+                    maxLength={60}
+                    autoComplete="name"
+                  />
+                </div>
                 {uploadState.error && (
                   <div style={{ color: '#c45', fontSize: 12, marginBottom: 6, textAlign: 'center' }}>
                     {uploadState.error}
@@ -1610,7 +1741,7 @@ export default function WeddingGallery() {
                 <button
                   className="lux-btn-send"
                   onClick={uploadPhotos}
-                  disabled={uploadState.active}
+                  disabled={uploadState.active || !guestName.trim()}
                 >
                   {uploadState.active
                     ? `Uploading… ${uploadState.progress}%`
@@ -1729,15 +1860,31 @@ export default function WeddingGallery() {
         </footer>
       </div>
 
-      {/* LIGHTBOX */}
+      {/* LIGHTBOX — full-bleed, Facebook-style photo viewer */}
       <div className={`lux-lightbox${lightbox.open ? " open" : ""}`}>
-        <button className="lux-lb-close" onClick={() => setLightbox(l => ({ ...l, open: false, zoomed: false }))}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        <div className="lux-lb-topbar">
+          <span className="lux-lb-credit">
+            {currentImg?.uploaderName ? <>Shared by <b>{currentImg.uploaderName}</b></> : ""}
+          </span>
+          <span className="lux-lb-counter">
+            {photos.length > 0 ? `${lightbox.idx + 1} / ${photos.length}` : ""}
+          </span>
+        </div>
+        <button className="lux-lb-close" onClick={() => setLightbox(l => ({ ...l, open: false, zoomed: false }))} aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+            <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
           </svg>
         </button>
-        <button className="lux-lb-nav lux-lb-prev" onClick={() => navPhoto(-1)}>‹</button>
-        <button className="lux-lb-nav lux-lb-next" onClick={() => navPhoto(1)}>›</button>
+        <button className="lux-lb-nav lux-lb-prev" onClick={() => navPhoto(-1)} aria-label="Previous photo">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M11 3l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button className="lux-lb-nav lux-lb-next" onClick={() => navPhoto(1)} aria-label="Next photo">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M7 3l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <div
           className="lux-lb-img-wrap"
           onPointerDown={lbDragStart}
@@ -1760,17 +1907,6 @@ export default function WeddingGallery() {
         >
           {lightbox.zoomed ? "Zoom Out" : "Zoom In"}
         </button>
-        <div className="lux-lb-filmstrip">
-          {photos.map((photo, idx) => (
-            <div
-              key={photo.id}
-              className={`lux-lb-thumb${lightbox.idx === idx ? " active" : ""}`}
-              onClick={() => setLightbox(l => ({ ...l, idx, zoomed: false }))}
-            >
-              <img src={photo.url} alt="" />
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* REELS — full-screen vertical video viewer (TikTok/Reels style) */}
@@ -1830,6 +1966,9 @@ export default function WeddingGallery() {
                 preload="metadata"
                 onClick={(e) => { e.target.paused ? e.target.play().catch(() => {}) : e.target.pause(); }}
               />
+              {vid.uploaderName && (
+                <div className="lux-reel-caption">Shared by <b>{vid.uploaderName}</b></div>
+              )}
               <ReelSeekBar reelRefs={reelRefs} idx={idx} active={reels.open} />
             </div>
           ))}
