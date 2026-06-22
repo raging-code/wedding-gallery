@@ -1557,17 +1557,51 @@ async function compressPhoto(file, onProgress) {
   }
 }
 
+// __PATCH_COMPRESSION_V1_FIX_IMPORT__
 // ── ffmpeg.wasm lazy loader (CDN, single-threaded core — no special headers) ─
+//
+// IMPORTANT: we deliberately do NOT write `import('https://unpkg.com/...')`
+// as a literal static import() anywhere in this file. CRA's webpack 4
+// parses every `import()` call at build time to try to bundle it, and it
+// can't handle an external http(s) module specifier — that fails the
+// production build with "doesn't support dynamic import() syntax". Instead
+// we inject a real <script type="module"> tag at runtime (a plain string,
+// invisible to webpack's static analysis) that does the import itself and
+// hands the result back to us via a one-off global.
 let _ffmpegInstance = null;
 let _ffmpegLoadPromise = null;
+
+function loadEsmFromCdn(specifier, globalName) {
+  return new Promise((resolve, reject) => {
+    const id = `__esm_${globalName}_${Math.random().toString(36).slice(2)}`;
+    window[id] = { resolve, reject };
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.textContent = `
+      import * as mod from '${specifier}';
+      window['${id}'].resolve(mod);
+    `;
+    script.onerror = () => { reject(new Error(`Failed to load ${specifier}`)); delete window[id]; };
+    document.head.appendChild(script);
+    // resolve()/reject() above fire synchronously-ish once the module graph
+    // loads; clean up the temp global+script either way.
+    Promise.resolve().then(() => {
+      const orig = window[id];
+      window[id] = {
+        resolve: (m) => { orig.resolve(m); delete window[id]; script.remove(); },
+        reject:  (e) => { orig.reject(e);  delete window[id]; script.remove(); },
+      };
+    });
+  });
+}
 
 async function loadFFmpeg() {
   if (_ffmpegInstance) return _ffmpegInstance;
   if (_ffmpegLoadPromise) return _ffmpegLoadPromise;
 
   _ffmpegLoadPromise = (async () => {
-    const { FFmpeg } = await import('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
-    const { toBlobURL } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    const { FFmpeg } = await loadEsmFromCdn('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js', 'ffmpeg');
+    const { toBlobURL } = await loadEsmFromCdn('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js', 'ffmpegutil');
 
     const ffmpeg = new FFmpeg();
     const base = 'https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/esm';
@@ -1611,7 +1645,7 @@ async function compressVideo(file, onProgress) {
   ffmpeg.on('progress', progressHandler);
 
   try {
-    const { fetchFile } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    const { fetchFile } = await loadEsmFromCdn('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js', 'ffmpegutil2');
     await ffmpeg.writeFile(inputName, await fetchFile(file));
 
     await ffmpeg.exec([
