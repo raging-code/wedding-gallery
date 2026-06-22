@@ -5,4 +5,4 @@ pages_build_output_dir = "build"
 [[d1_databases]]
 binding      = "DB"
 database_name = "wedding-gallery-social"
-database_id   = "29cb33dc-9a97-4cb1-9b5c-6d5ffeb55dc5"
+database_id   = "632f409e-5fda-481b-862a-9506cb176559"
