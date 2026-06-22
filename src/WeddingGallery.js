@@ -1971,6 +1971,7 @@ function ReelSocialBar({ mediaKey, guestName, onNameSaved }) {
   const [reactions, setReactions]       = useState(null);
   const [lastReacted, setLastReacted]   = useState(null);
   const [sheetOpen, setSheetOpen]       = useState(false);
+  const [pickerOpen, setPickerOpen]     = useState(false);
   const [comments, setComments]         = useState(null);
   const [newComment, setNewComment]     = useState('');
   const [sending, setSending]           = useState(false);
