@@ -968,19 +968,22 @@ body {
 }
 
 .lux-reels-close, .lux-reels-mute {
-  position: absolute; z-index: 5;
-  width: 38px; height: 38px; border-radius: 50%;
-  background: rgba(0,0,0,0.4); border: none;
+  position: fixed; z-index: 1200;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(0,0,0,0.52); border: none;
   color: #fff; display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: all .2s;
+  pointer-events: all; /* always tappable, even over the scroll container */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .lux-reels-close { top: 18px; left: 16px; }
 .lux-reels-mute  { bottom: 28px; right: 16px; }
-.lux-reels-close:hover, .lux-reels-mute:hover { background: rgba(0,0,0,0.65); }
+.lux-reels-close:hover, .lux-reels-mute:hover { background: rgba(0,0,0,0.72); }
 
 /* Desktop-only Prev/Next — hidden on touch devices (rule above) */
 .lux-reels-nav {
-  position: absolute; right: 18px; z-index: 5;
+  position: fixed; right: 18px; z-index: 1200;
   width: 44px; height: 44px; border-radius: 50%;
   background: rgba(0,0,0,0.4); border: none;
   color: #fff; display: flex; align-items: center; justify-content: center;
@@ -994,7 +997,7 @@ body {
 /* Uploader credit caption — bottom-left, above the seek bar, just like
    Facebook/Instagram Reels captions */
 .lux-reel-caption {
-  position: absolute; left: 16px; right: 70px; bottom: 56px; z-index: 5;
+  position: absolute; left: 16px; right: 70px; bottom: 260px; z-index: 5;
   font-family: var(--font-body); font-size: 12px; color: rgba(255,255,255,0.85);
   text-shadow: 0 1px 6px rgba(0,0,0,0.65); pointer-events: none;
 }
@@ -1023,7 +1026,109 @@ body {
   .lux-reels-close { top: 14px; left: 12px; width: 40px; height: 40px; }
   .lux-reels-mute  { bottom: 22px; right: 12px; width: 40px; height: 40px; }
   .lux-reel-seek   { left: 12px; right: 12px; bottom: 16px; }
-  .lux-reel-caption { left: 12px; right: 12px; bottom: 50px; font-size: 11px; }
+  .lux-reel-caption { left: 12px; right: 12px; bottom: 254px; font-size: 11px; }
+}
+
+/* ── REACTIONS & COMMENTS PANEL ─────────────────────────────────────────── */
+.lux-social-panel {
+  background: rgba(255,255,255,0.06);
+  border-top: 0.5px solid rgba(255,255,255,0.12);
+  padding: 12px 16px 14px;
+}
+
+/* Reaction bar */
+.lux-reaction-bar {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.lux-reaction-btn {
+  background: rgba(255,255,255,0.08);
+  border: 0.5px solid rgba(255,255,255,0.14);
+  border-radius: 999px; padding: 4px 10px;
+  font-size: 15px; cursor: pointer; transition: all .18s;
+  display: inline-flex; align-items: center; gap: 5px;
+  color: rgba(255,255,255,0.82);
+  font-family: var(--font-body); line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.lux-reaction-btn span.cnt {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.03em;
+}
+.lux-reaction-btn:hover,
+.lux-reaction-btn.popped { background: rgba(255,255,255,0.18); transform: scale(1.12); }
+.lux-reaction-btn.popped { animation: reactionPop .28s var(--ease-spring) both; }
+
+@keyframes reactionPop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.28); }
+  100% { transform: scale(1.12); }
+}
+
+/* Comments thread */
+.lux-comments-wrap {
+  max-height: 160px; overflow-y: auto;
+  margin-bottom: 8px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent;
+}
+.lux-comments-wrap::-webkit-scrollbar { width: 3px; }
+.lux-comments-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 2px; }
+
+.lux-comment {
+  padding: 5px 0; border-bottom: 0.5px solid rgba(255,255,255,0.07);
+  animation: fadeIn .2s ease both;
+}
+.lux-comment:last-child { border-bottom: none; }
+.lux-comment-author {
+  font-family: var(--font-body); font-size: 10.5px; font-weight: 600;
+  color: rgba(255,255,255,0.85); letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+.lux-comment-body {
+  font-family: var(--font-body); font-size: 12.5px; font-weight: 300;
+  color: rgba(255,255,255,0.75); line-height: 1.5;
+  word-break: break-word;
+}
+
+/* Comment input row */
+.lux-comment-input-row {
+  display: flex; gap: 6px; align-items: center;
+}
+.lux-comment-input {
+  flex: 1; background: rgba(255,255,255,0.09);
+  border: 0.5px solid rgba(255,255,255,0.16);
+  border-radius: 999px; padding: 7px 14px;
+  font-family: var(--font-body); font-size: 12.5px; font-weight: 300;
+  color: #fff; outline: none;
+  transition: border-color .2s, background .2s;
+}
+.lux-comment-input::placeholder { color: rgba(255,255,255,0.34); }
+.lux-comment-input:focus { border-color: var(--gold); background: rgba(255,255,255,0.13); }
+.lux-comment-send-btn {
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--gold); border: none; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .2s;
+  touch-action: manipulation;
+}
+.lux-comment-send-btn:hover { background: var(--gold-light); transform: scale(1.06); }
+.lux-comment-send-btn:disabled { opacity: .38; cursor: not-allowed; transform: none; }
+
+/* Lightbox social panel — slightly different bg, positioned at bottom */
+.lux-lb-social {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 5;
+  background: linear-gradient(0deg, rgba(0,0,0,0.72) 0%, transparent 100%);
+  padding: 40px 20px 22px;
+}
+@media (max-width: 639px) {
+  .lux-lb-social { padding: 36px 14px 18px; }
+}
+
+/* Loading shimmer for counts */
+.lux-social-loading {
+  display: inline-block; width: 40px; height: 11px; border-radius: 6px;
+  background: rgba(255,255,255,0.12);
+  animation: shimmer 1.8s ease-in-out infinite;
 }
 
 `
@@ -1097,6 +1202,173 @@ async function b2Upload(file, type, uploaderName) {
   if (!putRes.ok) throw new Error(`B2 PUT failed (${putRes.status})`);
 
   return publicUrl;
+}
+
+
+// ── Reactions & Comments API helpers ────────────────────────────────────────
+// mediaKey is derived from the B2 object key — it's the stable identifier
+// that links a photo/video to its social data in D1.
+
+async function fetchReactions(mediaKey) {
+  try {
+    const res = await fetch(`/api/reactions?mediaKey=${encodeURIComponent(mediaKey)}`);
+    if (!res.ok) return { counts: {}, total: 0 };
+    return res.json();
+  } catch { return { counts: {}, total: 0 }; }
+}
+
+async function postReaction(mediaKey, reaction) {
+  const res = await fetch('/api/reactions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mediaKey, reaction }),
+  });
+  if (!res.ok) throw new Error('Reaction failed');
+  return res.json();
+}
+
+async function fetchComments(mediaKey) {
+  try {
+    const res = await fetch(`/api/comments?mediaKey=${encodeURIComponent(mediaKey)}`);
+    if (!res.ok) return { comments: [] };
+    return res.json();
+  } catch { return { comments: [] }; }
+}
+
+async function postComment(mediaKey, authorName, body) {
+  const res = await fetch('/api/comments', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mediaKey, authorName, body }),
+  });
+  if (!res.ok) throw new Error('Comment failed');
+  return res.json();
+}
+
+// ── Derive a stable mediaKey from a list item ─────────────────────────────
+// We use the filename portion of the key as the stable ID.
+// Example: "photos/1716000000000_g_Q2FybG8.jpg" → "1716000000000_g_Q2FybG8.jpg"
+function mediaKeyFromItem(item) {
+  // item.name is already just the filename (set in b2List)
+  return item.name || String(item.id);
+}
+
+// ── SocialPanel component ─────────────────────────────────────────────────
+// Shared by both the Lightbox (photos) and the Reels viewer (videos).
+// mediaKey  — stable string ID for the media item
+// guestName — pre-filled author name from local state (may be empty)
+const REACTIONS_LIST = ['❤️', '👏', '💍', '😍', '🥂'];
+
+function SocialPanel({ mediaKey, guestName }) {
+  const [reactions, setReactions] = useState(null);  // null = loading
+  const [comments, setComments]   = useState(null);
+  const [newComment, setNewComment] = useState('');
+  const [sending, setSending]       = useState(false);
+  const [poppedEmoji, setPoppedEmoji] = useState(null);
+  const [localName, setLocalName]   = useState(guestName || '');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!mediaKey) return;
+    setReactions(null);
+    setComments(null);
+    fetchReactions(mediaKey).then(setReactions);
+    fetchComments(mediaKey).then(d => setComments(d.comments));
+  }, [mediaKey]);
+
+  async function handleReaction(emoji) {
+    if (!mediaKey) return;
+    setPoppedEmoji(emoji);
+    setTimeout(() => setPoppedEmoji(null), 400);
+    try {
+      const updated = await postReaction(mediaKey, emoji);
+      setReactions(updated);
+    } catch { /* silent fail — optimistic feel */ }
+  }
+
+  async function handleComment() {
+    const name = localName.trim() || guestName.trim();
+    const body = newComment.trim();
+    if (!name || !body || !mediaKey) return;
+    setSending(true);
+    try {
+      const { comment } = await postComment(mediaKey, name, body);
+      setComments(prev => [...(prev || []), comment]);
+      setNewComment('');
+    } catch { /* noop */ } finally { setSending(false); }
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(); }
+  }
+
+  const authorName = localName.trim() || guestName.trim();
+
+  return (
+    <div className="lux-social-panel">
+      {/* Reaction bar */}
+      <div className="lux-reaction-bar">
+        {REACTIONS_LIST.map(emoji => (
+          <button
+            key={emoji}
+            className={`lux-reaction-btn${poppedEmoji === emoji ? ' popped' : ''}`}
+            onClick={() => handleReaction(emoji)}
+            aria-label={`React with ${emoji}`}
+          >
+            {emoji}
+            {reactions && reactions.counts[emoji] ? (
+              <span className="cnt">{reactions.counts[emoji]}</span>
+            ) : null}
+          </button>
+        ))}
+        {reactions === null && <span className="lux-social-loading" />}
+      </div>
+
+      {/* Comments thread */}
+      {comments && comments.length > 0 && (
+        <div className="lux-comments-wrap">
+          {comments.map(c => (
+            <div key={c.id} className="lux-comment">
+              <div className="lux-comment-author">{c.author_name}</div>
+              <div className="lux-comment-body">{c.body}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Comment input */}
+      {!authorName && (
+        <input
+          className="lux-comment-input"
+          style={{ marginBottom: 6 }}
+          placeholder="Your name…"
+          value={localName}
+          onChange={e => setLocalName(e.target.value)}
+        />
+      )}
+      <div className="lux-comment-input-row">
+        <input
+          ref={inputRef}
+          className="lux-comment-input"
+          placeholder="Add a comment…"
+          value={newComment}
+          onChange={e => setNewComment(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={sending}
+        />
+        <button
+          className="lux-comment-send-btn"
+          onClick={handleComment}
+          disabled={sending || !newComment.trim() || !authorName}
+          aria-label="Send comment"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /** List media from all buckets via our server-side Function */
@@ -1201,8 +1473,9 @@ export default function WeddingGallery() {
   const [selected, setSelected]     = useState(new Set());
   const [showAll, setShowAll]       = useState(false);
   const [lightbox, setLightbox]     = useState({ open: false, idx: 0, zoomed: false });
+  const [showLbComments, setShowLbComments] = useState(false);
   const [reels, setReels]           = useState({ open: false, idx: 0 });
-  const [reelMuted, setReelMuted]   = useState(true);
+  const [reelMuted, setReelMuted]   = useState(false);
   const [guestName, setGuestName]   = useState(() => {
     try { return localStorage.getItem('lux_guest_name') || ''; } catch { return ''; }
   });
@@ -1266,8 +1539,8 @@ export default function WeddingGallery() {
     const handler = (e) => {
       if (!lightbox.open) return;
       if (e.key === "Escape")     setLightbox(l => ({ ...l, open: false, zoomed: false }));
-      if (e.key === "ArrowLeft")  setLightbox(l => ({ ...l, idx: (l.idx - 1 + photos.length) % photos.length, zoomed: false }));
-      if (e.key === "ArrowRight") setLightbox(l => ({ ...l, idx: (l.idx + 1) % photos.length, zoomed: false }));
+      if (e.key === "ArrowLeft")  { setShowLbComments(false); setLightbox(l => ({ ...l, idx: (l.idx - 1 + photos.length) % photos.length, zoomed: false })); }
+      if (e.key === "ArrowRight") { setShowLbComments(false); setLightbox(l => ({ ...l, idx: (l.idx + 1) % photos.length, zoomed: false })); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -1395,6 +1668,12 @@ export default function WeddingGallery() {
   function openLightbox(idx) {
     if (selectMode) { toggleSelect(idx); return; }
     setLightbox({ open: true, idx, zoomed: false });
+    setShowLbComments(false);
+  }
+
+  function navPhotoWithReset(dir) {
+    setShowLbComments(false);
+    navPhoto(dir);
   }
 
   function navPhoto(dir) {
@@ -1450,7 +1729,7 @@ export default function WeddingGallery() {
 
     const passedThreshold = Math.abs(dx) > window.innerWidth * DOMINANT_FRACTION;
     if (velocity > FAST_FLICK_VELOCITY || passedThreshold) {
-      navPhoto(dx < 0 ? 1 : -1);
+      navPhotoWithReset(dx < 0 ? 1 : -1);
     }
     // Otherwise: the transform reset above (with the transition re-enabled
     // by removing "dragging") animates it right back to the dominant photo.
@@ -1875,12 +2154,12 @@ export default function WeddingGallery() {
             <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
           </svg>
         </button>
-        <button className="lux-lb-nav lux-lb-prev" onClick={() => navPhoto(-1)} aria-label="Previous photo">
+        <button className="lux-lb-nav lux-lb-prev" onClick={() => navPhotoWithReset(-1)} aria-label="Previous photo">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M11 3l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <button className="lux-lb-nav lux-lb-next" onClick={() => navPhoto(1)} aria-label="Next photo">
+        <button className="lux-lb-nav lux-lb-next" onClick={() => navPhotoWithReset(1)} aria-label="Next photo">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M7 3l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -1907,6 +2186,23 @@ export default function WeddingGallery() {
         >
           {lightbox.zoomed ? "Zoom Out" : "Zoom In"}
         </button>
+        {/* Toggle button for social panel */}
+        <button
+          className="lux-lb-zoom"
+          style={{ right: 'auto', left: '50%', transform: 'translateX(calc(-50% + 72px))', fontSize: '16px', padding: '7px 14px' }}
+          onClick={() => setShowLbComments(v => !v)}
+          aria-label="Reactions and comments"
+        >
+          💬
+        </button>
+        {showLbComments && currentImg && (
+          <div className="lux-lb-social">
+            <SocialPanel
+              mediaKey={mediaKeyFromItem(currentImg)}
+              guestName={guestName}
+            />
+          </div>
+        )}
       </div>
 
       {/* REELS — full-screen vertical video viewer (TikTok/Reels style) */}
@@ -1970,6 +2266,13 @@ export default function WeddingGallery() {
                 <div className="lux-reel-caption">Shared by <b>{vid.uploaderName}</b></div>
               )}
               <ReelSeekBar reelRefs={reelRefs} idx={idx} active={reels.open} />
+              {/* Social panel — reactions + comments, anchored above seek bar */}
+              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 52, zIndex: 4 }}>
+                <SocialPanel
+                  mediaKey={mediaKeyFromItem(vid)}
+                  guestName={guestName}
+                />
+              </div>
             </div>
           ))}
         </div>
