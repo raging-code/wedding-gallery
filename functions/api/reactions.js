@@ -3,7 +3,7 @@
  * Requires D1 binding named "DB" in wrangler.toml
  */
 
-const ALLOWED_REACTIONS = new Set(['❤️', '👏', '💍', '😍', '🥂']);
+const ALLOWED_REACTIONS = new Set(['❤️', '🌸', '🥂', '😂', '💍']);
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
