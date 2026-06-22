@@ -1965,19 +1965,19 @@ function SocialPanel({ mediaKey, guestName, onNameSaved }) {
 // ── ReelSocialBar ────────────────────────────────────────────────────────────
 // Facebook-Reels style: right-side icon bar with heart (long-press = picker)
 // and comment icon. Comment icon opens a sliding bottom sheet.
-const REACTIONS_LIST_SHORT = ['❤️', '🌸', '🥂', '😂', '💍'];
+const REACTIONS_LIST_SHORT = ['❤️', '🌸', '🥂', '😂', '💍']; // eslint-disable-line no-unused-vars
 
 function ReelSocialBar({ mediaKey, guestName, onNameSaved }) {
   const [reactions, setReactions]       = useState(null);
   const [lastReacted, setLastReacted]   = useState(null);
   const [sheetOpen, setSheetOpen]       = useState(false);
-  const [pickerOpen, setPickerOpen]     = useState(false);
+  const [pickerOpen, setPickerOpen]     = useState(false); // eslint-disable-line no-unused-vars
   const [comments, setComments]         = useState(null);
   const [newComment, setNewComment]     = useState('');
   const [sending, setSending]           = useState(false);
   const [localName, setLocalName]       = useState(() => (guestName || '').trim() || getStoredName());
   const [editingName, setEditingName]   = useState(false);
-  const longPressTimer                  = useRef(null);
+  const longPressTimer                  = useRef(null); // eslint-disable-line no-unused-vars
   const sheetRef                        = useRef(null);
   const swipeStartY                     = useRef(null);
 
@@ -2057,7 +2057,7 @@ function ReelSocialBar({ mediaKey, guestName, onNameSaved }) {
     } catch {} finally { setSending(false); }
   }
 
-  const totalReactions = reactions ? Object.values(reactions.counts || {}).reduce((a, b) => a + b, 0) : 0;
+  const totalReactions = reactions ? Object.values(reactions.counts || {}).reduce((a, b) => a + b, 0) : 0; // eslint-disable-line no-unused-vars
   const commentCount   = (comments || []).length;
   const authorName     = localName.trim();
 
