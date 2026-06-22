@@ -849,14 +849,20 @@ body {
 /* The strip: three 100%-wide slots laid out in a row */
 .lux-lb-strip {
   display: flex;
-  width: 300%;       /* 3 × 100% = room for prev + current + next */
+  width: 300%;
   height: 100%;
-  /* While not dragging, snap back to the center slot with a nice ease */
-  transform: translateX(-33.3333%); /* start centred on the middle (current) */
+  /* Resting position: centre slot is in view */
+  transform: translateX(-33.3333%);
   will-change: transform;
-  transition: transform .32s cubic-bezier(0.22, 1, 0.36, 1);
+  /* FB/IG timing: snappy deceleration, no bounce */
+  transition: transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 .lux-lb-strip.dragging { transition: none; }
+/* Programmatic slide: same curve, block pointer events during flight */
+.lux-lb-strip.sliding  {
+  transition: transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  pointer-events: none;
+}
 /* Each slot is exactly 1/3 of the strip = 100vw of the image pane */
 .lux-lb-slot {
   width: 33.3333%;
@@ -2315,28 +2321,75 @@ export default function WeddingGallery() {
     setShowLbComments(false);
   }
 
-  function navPhotoWithReset(dir) {
+  // ── lbSlide: core animation — animate FIRST, update state AFTER ──────────
+  // dir = +1 (next) or -1 (prev).
+  // 1. CSS-transition the strip to the neighbour slot.
+  // 2. On transitionend: setLightbox with the new idx.
+  // 3. Snap strip back to resting (-33.333%) with no transition,
+  //    so the freshly-rendered centre slot appears seamlessly.
+  const lbStripRef   = useRef(null);
+  const lbSlidingRef = useRef(false); // block re-entrant slides
+
+  function lbSlide(dir) {
+    if (lbSlidingRef.current || photos.length < 2) return;
+    const strip = lbStripRef.current;
+    if (!strip) return;
+
+    lbSlidingRef.current = true;
     setShowLbComments(false);
-    navPhoto(dir);
+
+    // Each slot = 1/3 of strip width in px
+    const slotPx    = strip.offsetWidth / 3;
+    // Resting offset = -1 slotPx (centre slot in view)
+    // Moving right (+1 next) → strip slides left → negative extra px
+    const newOffset = -slotPx + (-dir * slotPx);
+
+    // 1. Kick off the CSS transition
+    strip.classList.remove('dragging');
+    strip.classList.add('sliding');
+    strip.style.transform = 'translateX(' + newOffset + 'px)';
+
+    function onEnd() {
+      strip.removeEventListener('transitionend', onEnd);
+
+      // 2. Update React state (slots re-render with new idx)
+      setLightbox(l => ({
+        ...l,
+        idx: (l.idx + dir + photos.length) % photos.length,
+        zoomed: false,
+      }));
+
+      // 3. Snap strip back with no transition
+      strip.classList.remove('sliding');
+      strip.style.transition = 'none';
+      strip.style.transform  = '';
+      // Force reflow so "transition:none" is committed before restoring
+      void strip.offsetHeight;
+      strip.style.transition = '';
+
+      lbSlidingRef.current = false;
+    }
+
+    strip.addEventListener('transitionend', onEnd, { once: true });
+
+    // Safety fallback if transitionend never fires (tab hidden, etc.)
+    setTimeout(() => {
+      if (!lbSlidingRef.current) return;
+      strip.removeEventListener('transitionend', onEnd);
+      onEnd();
+    }, 500);
   }
 
-  function navPhoto(dir) {
-    setLightbox(l => ({ ...l, idx: (l.idx + dir + photos.length) % photos.length, zoomed: false }));
-  }
-
-  // Lightbox swipe — three-slot strip: prev · current · next
-  //  All three images are rendered side-by-side.  The strip sits at
-  //  translateX(-33.333%) so the centre slot is always in view.
-  //  Dragging shifts the entire strip — you see the neighbour coming in
-  //  from the side exactly like Instagram / Facebook web viewer.
-  //  A fast flick or >30% drag commits; anything less springs back.
-  const lbStripRef = useRef(null);  // ref to .lux-lb-strip element
-
-  function lbGetStrip() { return lbStripRef.current; }
+  function navPhotoWithReset(dir) { lbSlide(dir); }
+  function navPhoto(dir)          { lbSlide(dir); }
 
   function lbDragStart(e) {
-    if (lightbox.zoomed || photos.length < 2) return;
-    lbDragRef.current = { active: true, startX: e.clientX, startY: e.clientY, locked: null, startTime: Date.now() };
+    if (lightbox.zoomed || photos.length < 2 || lbSlidingRef.current) return;
+    lbDragRef.current = {
+      active: true,
+      startX: e.clientX, startY: e.clientY,
+      locked: null, startTime: Date.now(),
+    };
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
@@ -2352,15 +2405,15 @@ export default function WeddingGallery() {
     }
     if (drag.locked !== 'x') return;
 
-    const strip = lbGetStrip();
-    if (strip) {
-      strip.classList.add('dragging');
-      // -33.333% is the resting position (centred on middle slot).
-      // We express dx as a percentage of the total strip width (300vw)
-      // so the slot boundaries line up correctly.
-      const pct = (dx / (window.innerWidth * 3)) * 100;
-      strip.style.transform = 'translateX(calc(-33.3333% + ' + pct * 3 + 'px))';
-    }
+    const strip = lbStripRef.current;
+    if (!strip) return;
+
+    strip.classList.add('dragging');
+    strip.classList.remove('sliding');
+    // Resting offset in px = -1 slot width; add finger delta
+    const slotPx   = strip.offsetWidth / 3;
+    const offsetPx = -slotPx + dx;
+    strip.style.transform = 'translateX(' + offsetPx + 'px)';
   }
 
   function lbDragEnd(e) {
@@ -2368,31 +2421,45 @@ export default function WeddingGallery() {
     if (!drag.active) return;
     drag.active = false;
 
-    const strip = lbGetStrip();
+    const strip        = lbStripRef.current;
     const wasHorizontal = drag.locked === 'x';
-    if (strip) {
-      strip.classList.remove('dragging');
-      strip.style.transform = '';   // CSS transition springs back to -33.333%
-    }
-    if (!wasHorizontal) return;
 
-    const dx = e.clientX - drag.startX;
-    const elapsed = Math.max(1, Date.now() - drag.startTime);
+    if (!wasHorizontal) {
+      if (strip) { strip.classList.remove('dragging'); strip.style.transform = ''; }
+      return;
+    }
+
+    const dx       = e.clientX - drag.startX;
+    const elapsed  = Math.max(1, Date.now() - drag.startTime);
     const velocity = Math.abs(dx) / elapsed;
 
-    const FAST_FLICK_VELOCITY = 0.55;
-    const DOMINANT_FRACTION   = 0.30;
+    const FLICK     = 0.45;  // px/ms — fast flick
+    const THRESHOLD = 0.28;  // fraction of screen width to commit
 
-    const passedThreshold = Math.abs(dx) > window.innerWidth * DOMINANT_FRACTION;
-    if (velocity > FAST_FLICK_VELOCITY || passedThreshold) {
-      navPhotoWithReset(dx < 0 ? 1 : -1);
+    const commit = velocity > FLICK || Math.abs(dx) > window.innerWidth * THRESHOLD;
+
+    if (commit) {
+      if (strip) strip.classList.remove('dragging');
+      lbSlide(dx < 0 ? 1 : -1);
+    } else {
+      // Spring back to resting with transition
+      if (strip) {
+        strip.classList.remove('dragging');
+        strip.classList.add('sliding');
+        strip.style.transform = '';
+        strip.addEventListener('transitionend', () => strip.classList.remove('sliding'), { once: true });
+      }
     }
   }
 
   function lbDragCancel() {
     lbDragRef.current.active = false;
-    const strip = lbGetStrip();
-    if (strip) { strip.classList.remove('dragging'); strip.style.transform = ''; }
+    const strip = lbStripRef.current;
+    if (!strip) return;
+    strip.classList.remove('dragging');
+    strip.classList.add('sliding');
+    strip.style.transform = '';
+    strip.addEventListener('transitionend', () => strip.classList.remove('sliding'), { once: true });
   }
 
   function toggleSelect(idx) {
