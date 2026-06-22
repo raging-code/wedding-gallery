@@ -709,7 +709,12 @@ body {
   background: var(--pink-mid);
   position: relative; border: 2px solid transparent; transition: border-color .3s var(--ease-out), box-shadow .3s var(--ease-out);
   height: 100%;
-  contain: layout style;
+  /* layout+style+paint: isolate repaint to this tile only */
+  contain: layout style paint;
+  /* Skip render for off-screen tiles — biggest perf win for large galleries */
+  content-visibility: auto;
+  /* Hint the reserved tile height so scroll position stays stable */
+  contain-intrinsic-size: 0 200px;
 }
 /* On mobile, featured photo is a single normal-sized tile like the rest */
 @media (max-width: 639px) {
@@ -723,7 +728,7 @@ body {
   /* Promote to GPU only while hovered — avoids wasting layers for all images */
   will-change: auto;
 }
-.lux-photo-item:hover img { transform: scale(1.05); opacity: 0.96; }
+.lux-photo-item:hover img { transform: scale(1.05); opacity: 0.96; will-change: transform; }
 @media (hover: none) { .lux-photo-item:hover img { transform: none; filter: none; } }
 
 /* Hover overlay */
@@ -961,7 +966,7 @@ body {
   display: flex; align-items: center; justify-content: center;
   height: 100%;
   background: #000;
-  contain: layout paint;
+  contain: layout style paint; /* 'style' added: isolates counter/quote scope per slot */
 }
 .lux-lb-slot img {
   max-width: 100%; max-height: 100%; object-fit: contain;
@@ -1271,6 +1276,7 @@ body {
   scrollbar-width: none;
   /* Prevent the page behind from scrolling when the viewer is open */
   overscroll-behavior: contain;
+  overscroll-behavior-y: contain; /* long-hand for engines that need it */
   /* Native-feel vertical swipe, no browser interference */
   touch-action: pan-y;
 }
@@ -1281,7 +1287,7 @@ body {
   /* "normal" (not "always") is what lets a fast flick sail past the next
      snap point instantly, while a slow/partial drag still settles on
      whichever video is more dominant — true Reels/TikTok physics, free. */
-  scroll-snap-align: start; scroll-snap-stop: normal;
+  scroll-snap-align: start; scroll-snap-stop: always;
   display: flex; align-items: center; justify-content: center;
   position: relative;
   /* Promote GPU layer only on active/adjacent slides via JS */
@@ -2556,6 +2562,7 @@ export default function WeddingGallery() {
   const videoInputRef    = useRef(null);
   const reelRefs          = useRef([]);
   const reelContainerRef  = useRef(null);
+  const reelNavLockRef    = useRef(false); // prevents overlapping goToReel calls
   const lbImgRef           = useRef(null);
   const lbDragRef          = useRef({ active: false, startX: 0, startY: 0, locked: null, startTime: 0 });
   // Incremented every time a new slide animation starts; stale onEnd
@@ -2758,13 +2765,29 @@ export default function WeddingGallery() {
 
   const closeReels = useCallback(() => {
     reelRefs.current.forEach(v => v && v.pause());
+    reelNavLockRef.current = false; // clear any stale nav lock on close
     setReels(r => ({ ...r, open: false }));
   }, []);
 
   const goToReel = useCallback((targetIdx) => {
+    // Guard: clamp range AND prevent overlapping navigations that would
+    // cause the scroll container to overshoot (jump multiple videos).
     if (targetIdx < 0 || targetIdx >= videos.length) return;
-    const el = reelRefs.current[targetIdx];
-    el?.closest(".lux-reel-slide")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (reelNavLockRef.current) return;
+
+    const container = reelContainerRef.current;
+    const slide = reelRefs.current[targetIdx]?.closest('.lux-reel-slide');
+    if (!container || !slide) return;
+
+    // Instant scroll to the exact top of the target slide.
+    // scroll-snap-stop:always in CSS ensures the browser snaps to this
+    // one slide and can never sail past it, even on a fast flick.
+    reelNavLockRef.current = true;
+    container.scrollTo({ top: slide.offsetTop, behavior: 'instant' });
+
+    // Release the lock after one snap cycle so the next swipe registers.
+    // 180 ms is enough for snap physics to settle on all mobile engines.
+    setTimeout(() => { reelNavLockRef.current = false; }, 180);
   }, [videos.length]);
 
   const openLightbox = useCallback((idx) => {
@@ -3757,13 +3780,13 @@ export default function WeddingGallery() {
                 src={vid.url}
                 className="lux-reel-video"
                 loop playsInline muted={reelMuted}
-                preload={Math.abs(idx - reels.idx) <= 1 ? "auto" : "none"}
+                preload={Math.abs(idx - reels.idx) <= 2 ? "auto" : "none"}
                 onClick={(e) => { e.target.paused ? e.target.play().catch(() => {}) : e.target.pause(); }}
               />
               {vid.uploaderName && (
                 <div className="lux-reel-caption">Shared by <b>{vid.uploaderName}</b></div>
               )}
-              <ReelSeekBar reelRefs={reelRefs} idx={idx} active={reels.open && Math.abs(idx - reels.idx) <= 1} />
+              <ReelSeekBar reelRefs={reelRefs} idx={idx} active={reels.open && Math.abs(idx - reels.idx) <= 2} />
               {/* Facebook Reels-style: icon bar on the right + expandable comment sheet */}
               <ReelSocialBar
                 mediaKey={mediaKeyFromItem(vid)}
