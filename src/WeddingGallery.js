@@ -2381,7 +2381,6 @@ export default function WeddingGallery() {
   }
 
   function navPhotoWithReset(dir) { lbSlide(dir); }
-  function navPhoto(dir)          { lbSlide(dir); }
 
   function lbDragStart(e) {
     if (lightbox.zoomed || photos.length < 2 || lbSlidingRef.current) return;
