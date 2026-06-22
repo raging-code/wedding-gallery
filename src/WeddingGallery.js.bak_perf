@@ -387,19 +387,6 @@ body {
 }
 .lux-story-play svg { position: relative; z-index: 1; margin-left: 2px; }
 
-/* Story thumbnail — <canvas> or <img> poster shown before user taps */
-.lux-story-thumb {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%; object-fit: cover;
-  border-radius: 10px;
-  background: var(--pink-deep);
-}
-/* Video inside the strip is hidden by default; only revealed in the
-   full-screen reels viewer, never pre-loaded in the strip itself */
-.lux-story-video-hidden {
-  display: none;
-}
-
 @media (min-width: 480px) {
   .lux-story-add, .lux-story-ph { width: 112px; height: 196px; }
 }
@@ -712,8 +699,6 @@ body {
 .lux-photo-item img {
   width: 100% !important; height: 100% !important; object-fit: cover !important; display: block;
   transition: transform .65s var(--ease-out), filter .3s;
-  /* Avoid compositing cost for all grid images on mobile */
-  will-change: auto;
 }
 .lux-photo-item:hover img { transform: scale(1.05); opacity: 0.96; }
 @media (hover: none) { .lux-photo-item:hover img { transform: none; filter: none; } }
@@ -1100,24 +1085,6 @@ body {
   .lux-reels-nav { display: none; }
 }
 
-/* ── Reduced motion: kill all cosmetic animations ───────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  .lux-petal                  { animation: none !important; display: none; }
-  .lux-name                   { animation: none !important; opacity: 1; clip-path: none !important; }
-  .lux-pretitle               { animation: none !important; opacity: 1; }
-  .lux-pretitle::before,
-  .lux-pretitle::after        { animation: none !important; transform: scaleX(1); }
-  .lux-connector-row,
-  .lux-date-row,
-  .lux-invite-plain,
-  .lux-upload-simple,
-  .lux-card                   { animation: none !important; opacity: 1; transform: none; }
-  .lux-photo-item img         { transition: none; }
-  .lux-lightbox.open          { animation: none; }
-  .lux-reels.open             { animation: none; }
-  .lux-reel-comment-sheet.animating-in { animation: none; transform: translateY(0); }
-}
-
 /* ── REELS RIGHT-SIDE ICON BAR (Facebook Reels style) ─────────────────────── */
 
 /* Container — right edge, vertically centred, never covers mute/close */
@@ -1258,10 +1225,6 @@ body {
      iPhone and iPad.  The property is deprecated since iOS 13 and the
      default momentum behaviour is identical without it. */
   scrollbar-width: none;
-  /* Prevent the page behind from scrolling when the viewer is open */
-  overscroll-behavior: contain;
-  /* Native-feel vertical swipe, no browser interference */
-  touch-action: pan-y;
 }
 .lux-reels-scroll::-webkit-scrollbar { display: none; }
 
@@ -1273,12 +1236,6 @@ body {
   scroll-snap-align: start; scroll-snap-stop: normal;
   display: flex; align-items: center; justify-content: center;
   position: relative;
-  /* GPU layer per slide — eliminates compositing stutter during snap */
-  will-change: transform;
-  /* Prevent layout bleed from icon bar / seek bar repaints */
-  contain: layout style;
-  /* iOS: eliminate rubber-band behind the slide */
-  overscroll-behavior: contain;
 }
 .lux-reel-video {
   width: 100%; height: 100%;
@@ -1287,14 +1244,6 @@ body {
      own black background instead of cropping the footage. */
   object-fit: contain; cursor: pointer;
   background: #000;
-  /* Force a dedicated GPU compositing layer for the video surface.
-     Without this, scrolling between reels triggers a full layer
-     re-upload on every snap which is what causes the visible stutter. */
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  /* Prevent subpixel AA bleed on rounded edges during compositing */
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
 }
 
 /* Mute + close live as DIRECT children of .lux-reels (position:fixed,
@@ -2402,98 +2351,6 @@ function ReelSeekBar({ reelRefs, idx, active }) {
   );
 }
 
-// ── StoryThumb ────────────────────────────────────────────────────────────────
-// Extracts a poster frame from a video URL by:
-//  1. Creating a hidden <video> element (not in the DOM)
-//  2. Seeking to 0.1 s so we get an actual frame (not a black flash)
-//  3. Drawing that frame onto a <canvas> via drawImage()
-//  4. Disposing the video element immediately
-//
-// Fallback: if the extract fails (CORS, codec, etc.) we show the blush
-// placeholder instead of a broken image.
-function StoryThumb({ url }) {
-  const canvasRef = useRef(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    if (!url) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    let cancelled = false;
-    const vid = document.createElement('video');
-    vid.muted        = true;
-    vid.playsInline  = true;
-    vid.crossOrigin  = 'anonymous';
-    vid.preload      = 'metadata';
-
-    function cleanup() {
-      vid.removeEventListener('seeked', onSeeked);
-      vid.removeEventListener('error', onError);
-      vid.src = '';
-      vid.load(); // release network resource
-    }
-
-    function onSeeked() {
-      if (cancelled) { cleanup(); return; }
-      try {
-        const ctx = canvas.getContext('2d');
-        canvas.width  = vid.videoWidth  || 96;
-        canvas.height = vid.videoHeight || 170;
-        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-      } catch {
-        if (!cancelled) setFailed(true);
-      }
-      cleanup();
-    }
-
-    function onError() {
-      if (!cancelled) setFailed(true);
-      cleanup();
-    }
-
-    vid.addEventListener('seeked',   onSeeked, { once: true });
-    vid.addEventListener('error',    onError,  { once: true });
-    vid.src = url;
-    vid.load();
-
-    // Once metadata is ready, seek to 0.1 s for a real frame
-    vid.addEventListener('loadedmetadata', () => {
-      if (cancelled) { cleanup(); return; }
-      vid.currentTime = 0.1;
-    }, { once: true });
-
-    return () => {
-      cancelled = true;
-      cleanup();
-    };
-  }, [url]);
-
-  if (failed) {
-    // Graceful fallback — same as the placeholder tiles
-    return (
-      <div className="lux-story-ph-inner">
-        <div className="lux-story-ph-icon">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-            <rect x="1.5" y="3.5" width="13" height="9" rx="1.2"
-              stroke="#c4748e" strokeWidth="0.9" />
-            <path d="M6 6.5l4.5 1.5L6 9.5V6.5z"
-              stroke="#c4748e" strokeWidth="0.9" />
-          </svg>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="lux-story-thumb"
-      aria-hidden="true"
-    />
-  );
-}
-
 export default function WeddingGallery() {
   const [photos, setPhotos]         = useState([]);
   const [videos, setVideos]         = useState([]);
@@ -2631,7 +2488,7 @@ export default function WeddingGallery() {
           vid.pause();
         }
       });
-    }, { threshold: [0, 0.6, 1], rootMargin: '0px 0px' });
+    }, { threshold: [0, 0.6, 1], rootMargin: '200px 0px' });
     els.forEach(el => observer.observe(el));
     return () => observer.disconnect();
   }, [reels.open, videos.length]);
@@ -2983,9 +2840,8 @@ export default function WeddingGallery() {
       {/* Ambient background canvas */}
       <div className="lux-bg-canvas" />
 
-      {/* Floating petals — deferred until idle to not block first paint.
-           Hidden entirely while Reels is open to free up GPU budget. */}
-      {petalsReady && !reels.open && [
+      {/* Floating petals — deferred until idle to not block first paint */}
+      {petalsReady && [
         { l:'8%',  size:10, dur:14, delay:0,    x:40,  r:280, sway:16, swayDur:3.2 },
         { l:'18%', size:7,  dur:18, delay:3,    x:-30, r:320, sway:12, swayDur:2.8 },
         { l:'32%', size:12, dur:12, delay:6,    x:55,  r:240, sway:20, swayDur:3.6 },
@@ -3131,11 +2987,12 @@ export default function WeddingGallery() {
               style={{ cursor: 'pointer' }}
               onClick={() => openReels(idx)}
             >
-              {/* StoryThumb: extracts a poster frame via a hidden video element
-                  so we never keep a live <video> in the strip.  The hidden
-                  video is created, seeked to 0.001 s, drawn to canvas, then
-                  immediately removed — no ongoing network load. */}
-              <StoryThumb url={vid.url} />
+              <video
+                src={vid.url}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }}
+                muted playsInline
+                preload="metadata"
+              />
               <div className="lux-story-play">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M5 3.5v9l8-4.5-8-4.5z" fill="#fff" />
@@ -3695,7 +3552,7 @@ export default function WeddingGallery() {
                 src={vid.url}
                 className="lux-reel-video"
                 loop playsInline muted={reelMuted}
-                preload={Math.abs(idx - reels.idx) <= 1 ? "auto" : "none"}
+                preload="metadata"
                 onClick={(e) => { e.target.paused ? e.target.play().catch(() => {}) : e.target.pause(); }}
               />
               {vid.uploaderName && (
