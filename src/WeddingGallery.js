@@ -638,7 +638,7 @@ body {
   width: 100% !important; height: 100% !important; object-fit: cover !important; display: block;
   transition: transform .65s var(--ease-out), filter .3s;
 }
-.lux-photo-item:hover img { transform: scale(1.05); filter: brightness(1.02); }
+.lux-photo-item:hover img { transform: scale(1.05); opacity: 0.96; }
 @media (hover: none) { .lux-photo-item:hover img { transform: none; filter: none; } }
 
 /* Hover overlay */
@@ -742,6 +742,7 @@ body {
   width: 100vw; height: 100vh; height: 100dvh;
   background: #000;
   display: none;
+  contain: layout style;
   /* Desktop: two-pane side-by-side like Instagram */
   flex-direction: row; align-items: stretch;
 }
@@ -1026,7 +1027,7 @@ body {
 .lux-reel-icon-bar {
   position: absolute;
   right: 14px;
-  bottom: 120px;          /* above seek bar (≈52px) + some breathing room */
+  bottom: 60px;           /* above seek bar — 5 emojis + comment icon */
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -1042,7 +1043,7 @@ body {
   touch-action: manipulation;
 }
 .lux-reel-icon-circle {
-  width: 46px; height: 46px; border-radius: 50%;
+  width: 42px; height: 42px; border-radius: 50%;
   background: rgba(0,0,0,0.45);
   border: 1.5px solid rgba(255,255,255,0.18);
   display: flex; align-items: center; justify-content: center;
@@ -1145,12 +1146,14 @@ body {
   position: fixed; inset: 0; z-index: 1100;
   background: #000;
   display: none;
+  contain: layout style;
 }
 .lux-reels.open { display: block; animation: fadeIn .25s ease both; }
 
 .lux-reels-scroll {
   height: 100vh; height: 100dvh;
   overflow-y: auto; scroll-snap-type: y mandatory;
+  will-change: scroll-position;
   /* -webkit-overflow-scrolling: touch — REMOVED.
      That property caused iOS to create a native UIScrollView that
      intercepted ALL touch events across the full viewport, making the
@@ -1193,8 +1196,24 @@ body {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.lux-reels-close { top: 18px; left: 16px; }
-.lux-reels-mute  { top: 18px; right: 16px; }   /* moved to top-right, mirrors close btn */
+.lux-reels-close    { top: 18px; left: 16px; }
+.lux-reels-mute     { top: 18px; right: 16px; }
+.lux-reels-download {
+  position: absolute; z-index: 200;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(0,0,0,0.56); border: 1.5px solid rgba(255,255,255,0.18);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .18s, transform .15s, opacity .2s;
+  pointer-events: all;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  top: 18px; right: 68px;   /* just to the left of the mute button */
+}
+.lux-reels-download:hover { background: rgba(0,0,0,0.76); transform: scale(1.06); }
+.lux-reels-download:active { transform: scale(0.94); }
+@media (max-width: 639px) {
+  .lux-reels-download { top: 12px; right: 60px; width: 40px; height: 40px; }
+}   /* moved to top-right, mirrors close btn */
 /* Mute button now lives at top-right so it never overlaps the bottom sheet;
    keep it visible and tappable even while the sheet is open. */
 /* .lux-reels.sheet-open .lux-reels-mute { opacity: 0; pointer-events: none; } */
@@ -1950,7 +1969,6 @@ const REACTIONS_LIST_SHORT = ['❤️', '🌸', '🥂', '😂', '💍'];
 
 function ReelSocialBar({ mediaKey, guestName, onNameSaved }) {
   const [reactions, setReactions]       = useState(null);
-  const [pickerOpen, setPickerOpen]     = useState(false);
   const [lastReacted, setLastReacted]   = useState(null);
   const [sheetOpen, setSheetOpen]       = useState(false);
   const [comments, setComments]         = useState(null);
@@ -2008,20 +2026,7 @@ function ReelSocialBar({ mediaKey, guestName, onNameSaved }) {
     fetchComments(mediaKey).then(d => setComments(d.comments || []));
   }, [mediaKey]);
 
-  // Long-press on the heart icon opens the picker
-  function startLongPress() {
-    longPressTimer.current = setTimeout(() => setPickerOpen(true), 420);
-  }
-  function cancelLongPress() {
-    clearTimeout(longPressTimer.current);
-  }
-
-  // Tap the heart (no picker) = toggle ❤️
-  async function tapHeart() {
-    setPickerOpen(false);
-    await doReact('❤️');
-  }
-
+  // Simple direct react — no long press needed
   async function doReact(emoji) {
     if (!mediaKey) return;
     setLastReacted(emoji);
@@ -2060,40 +2065,24 @@ function ReelSocialBar({ mediaKey, guestName, onNameSaved }) {
       {/* Right-side icon bar */}
       <div className="lux-reel-icon-bar">
 
-        {/* Heart / long-press picker */}
-        <div style={{ position: 'relative' }}>
-          {pickerOpen && (
-            <div className="lux-reel-rxn-picker">
-              {REACTIONS_LIST_SHORT.map(emoji => (
-                <button
-                  key={emoji}
-                  className="lux-reel-rxn-picker-btn"
-                  onPointerDown={(e) => { e.stopPropagation(); doReact(emoji); }}
-                  type="button"
-                  aria-label={'React ' + emoji}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
-          <button
-            className={'lux-reel-icon-btn' + (lastReacted ? ' reacted' : '')}
-            onPointerDown={startLongPress}
-            onPointerUp={() => { cancelLongPress(); if (!pickerOpen) tapHeart(); }}
-            onPointerCancel={cancelLongPress}
-            onPointerLeave={cancelLongPress}
-            type="button"
-            aria-label="React"
-          >
-            <div className="lux-reel-icon-circle">
-              {lastReacted || '❤️'}
-            </div>
-            <span className="lux-reel-icon-label">
-              {totalReactions > 0 ? totalReactions : ''}
-            </span>
-          </button>
-        </div>
+        {/* All reactions — always visible, no long-press */}
+        {REACTIONS_LIST.map(({ emoji, label }) => (
+          <div key={emoji} style={{ position: 'relative' }}>
+            <button
+              className={'lux-reel-icon-btn' + (lastReacted === emoji ? ' reacted' : '')}
+              onClick={() => doReact(emoji)}
+              type="button"
+              aria-label={'React ' + label}
+            >
+              <div className="lux-reel-icon-circle" style={{ width: 40, height: 40, fontSize: 20 }}>
+                {emoji}
+              </div>
+              {reactions && reactions.counts && reactions.counts[emoji] > 0 && (
+                <span className="lux-reel-icon-label">{reactions.counts[emoji]}</span>
+              )}
+            </button>
+          </div>
+        ))}
 
         {/* Comment icon */}
         <button
@@ -2315,6 +2304,17 @@ export default function WeddingGallery() {
   const [guestName, setGuestName]   = useState(() => {
     try { return localStorage.getItem('lux_guest_name') || ''; } catch { return ''; }
   });
+  // Defer petal rendering until after first paint — pure cosmetic, no rush
+  const [petalsReady, setPetalsReady] = useState(false);
+  useEffect(() => {
+    const id = typeof requestIdleCallback !== 'undefined'
+      ? requestIdleCallback(() => setPetalsReady(true), { timeout: 2000 })
+      : setTimeout(() => setPetalsReady(true), 800);
+    return () => {
+      if (typeof cancelIdleCallback !== 'undefined') cancelIdleCallback(id);
+      else clearTimeout(id);
+    };
+  }, []);
   const fileInputRef     = useRef(null);
   const videoInputRef    = useRef(null);
   const reelRefs          = useRef([]);
@@ -2423,7 +2423,7 @@ export default function WeddingGallery() {
           vid.pause();
         }
       });
-    }, { threshold: [0, 0.6, 1] });
+    }, { threshold: [0, 0.6, 1], rootMargin: '200px 0px' });
     els.forEach(el => observer.observe(el));
     return () => observer.disconnect();
   }, [reels.open, videos.length]);
@@ -2712,6 +2712,55 @@ export default function WeddingGallery() {
     else setSelected(new Set(photos.map((_, i) => i)));
   }
 
+  // ── Download current reel video
+  async function downloadCurrentVideo() {
+    const vid = videos[reels.idx];
+    if (!vid) return;
+    try {
+      const resp = await fetch(vid.url);
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      const ext = vid.url.split('?')[0].split('.').pop() || 'mp4';
+      a.download = vid.name || `video-${reels.idx + 1}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      await new Promise(r => setTimeout(r, 200));
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Video download failed', err);
+    }
+  }
+
+    // ── Download selected photos — fetch each URL as a blob then trigger <a> click
+  async function downloadSelected() {
+    const indices = [...selected];
+    for (let n = 0; n < indices.length; n++) {
+      const photo = photos[indices[n]];
+      if (!photo) continue;
+      try {
+        const resp = await fetch(photo.url);
+        const blob = await resp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        // Derive a sensible filename: use the stored name or fall back to index
+        const ext = photo.url.split('?')[0].split('.').pop() || 'jpg';
+        a.download = photo.name || `photo-${n + 1}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Stagger downloads so the browser doesn't block them
+        await new Promise(r => setTimeout(r, 350));
+        URL.revokeObjectURL(blobUrl);
+      } catch (err) {
+        console.error('Download failed for', photo.url, err);
+      }
+    }
+  }
+
   const visiblePhotos = showAll ? photos : photos.slice(0, 9);
   const currentImg = photos[lightbox.idx];
 
@@ -2721,8 +2770,8 @@ export default function WeddingGallery() {
       {/* Ambient background canvas */}
       <div className="lux-bg-canvas" />
 
-      {/* Floating petals — ambient atmosphere */}
-      {[
+      {/* Floating petals — deferred until idle to not block first paint */}
+      {petalsReady && [
         { l:'8%',  size:10, dur:14, delay:0,    x:40,  r:280, sway:16, swayDur:3.2 },
         { l:'18%', size:7,  dur:18, delay:3,    x:-30, r:320, sway:12, swayDur:2.8 },
         { l:'32%', size:12, dur:12, delay:6,    x:55,  r:240, sway:20, swayDur:3.6 },
@@ -3014,7 +3063,7 @@ export default function WeddingGallery() {
                   </button>
                 )}
                 {selected.size > 0 && (
-                  <button className="lux-btn-action dl">
+                  <button className="lux-btn-action dl" onClick={downloadSelected}>
                     Download ({selected.size})
                   </button>
                 )}
@@ -3054,7 +3103,7 @@ export default function WeddingGallery() {
                       className={`lux-photo-item${idx === 0 ? " featured" : ""}${selected.has(idx) ? " selected" : ""}`}
                       onClick={() => openLightbox(idx)}
                     >
-                      <img src={photo.url} alt="" loading="lazy" />
+                      <img src={photo.url} alt="" loading="lazy" decoding="async" />
                       <div className="lux-photo-hover">
                         <div className="lux-photo-view-icon">
                           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -3133,6 +3182,36 @@ export default function WeddingGallery() {
               <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
           </button>
+
+          {/* Single-photo download button */}
+          {currentImg && (
+            <button
+              className="lux-lb-close"
+              style={{ right: 62 }}
+              onClick={async () => {
+                try {
+                  const resp = await fetch(currentImg.url);
+                  const blob = await resp.blob();
+                  const blobUrl = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = blobUrl;
+                  const ext = currentImg.url.split('?')[0].split('.').pop() || 'jpg';
+                  a.download = currentImg.name || `photo.${ext}`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  setTimeout(() => URL.revokeObjectURL(blobUrl), 300);
+                } catch (e) { console.error('Lightbox download failed', e); }
+              }}
+              aria-label="Download photo"
+              title="Download this photo"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v13M6 11l6 6 6-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="4" y1="20" x2="20" y2="20" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
 
           {/* Prev / Next */}
           <button className="lux-lb-nav lux-lb-prev" onClick={() => navPhotoWithReset(-1)} aria-label="Previous photo">
@@ -3281,6 +3360,19 @@ export default function WeddingGallery() {
             <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
           </svg>
         </button>
+        {/* Download current video */}
+        <button
+          className="lux-reels-download"
+          onClick={downloadCurrentVideo}
+          aria-label="Download video"
+          title="Download this video"
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3v13M6 11l6 6 6-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+            <line x1="4" y1="20" x2="20" y2="20" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+          </svg>
+        </button>
+
         <button
           className="lux-reels-mute"
           onClick={() => setReelMuted(m => !m)}
