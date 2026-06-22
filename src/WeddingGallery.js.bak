@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { flushSync } from 'react-dom';
 
 const LUXURY_CSS = `
 /* ── Fraunces (hero + display) · Manrope (body) ─────────────────────────── */
@@ -1149,12 +1148,7 @@ body {
 .lux-reels-scroll {
   height: 100vh; height: 100dvh;
   overflow-y: auto; scroll-snap-type: y mandatory;
-  /* -webkit-overflow-scrolling: touch — REMOVED.
-     That property caused iOS to create a native UIScrollView that
-     intercepted ALL touch events across the full viewport, making the
-     mute button (a positioned sibling with z-index 200) untappable on
-     iPhone and iPad.  The property is deprecated since iOS 13 and the
-     default momentum behaviour is identical without it. */
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 .lux-reels-scroll::-webkit-scrollbar { display: none; }
@@ -1192,10 +1186,9 @@ body {
   touch-action: manipulation;
 }
 .lux-reels-close { top: 18px; left: 16px; }
-.lux-reels-mute  { top: 18px; right: 16px; }   /* moved to top-right, mirrors close btn */
-/* Mute button now lives at top-right so it never overlaps the bottom sheet;
-   keep it visible and tappable even while the sheet is open. */
-/* .lux-reels.sheet-open .lux-reels-mute { opacity: 0; pointer-events: none; } */
+.lux-reels-mute  { bottom: 28px; right: 16px; }
+/* Hide mute when the comment sheet is open (class toggled from JS) */
+.lux-reels.sheet-open .lux-reels-mute { opacity: 0; pointer-events: none; }
 .lux-reels-close:hover, .lux-reels-mute:hover {
   background: rgba(0,0,0,0.76);
   transform: scale(1.06);
@@ -1245,7 +1238,7 @@ body {
 
 @media (max-width: 639px) {
   .lux-reels-close { top: 12px; left: 12px; width: 40px; height: 40px; }
-  .lux-reels-mute  { top: 12px; right: 12px; width: 40px; height: 40px; }   /* moved to top-right */
+  .lux-reels-mute  { bottom: 20px; right: 12px; width: 40px; height: 40px; }
   .lux-reel-seek   { left: 12px; right: 12px; bottom: 16px; }
   .lux-reel-caption { left: 12px; right: 12px; bottom: 254px; font-size: 11px; }
 }
@@ -2142,9 +2135,6 @@ export default function WeddingGallery() {
   const reelContainerRef  = useRef(null);
   const lbImgRef           = useRef(null);
   const lbDragRef          = useRef({ active: false, startX: 0, startY: 0, locked: null, startTime: 0 });
-  // Incremented every time a new slide animation starts; stale onEnd
-  // callbacks compare their captured animId against this and bail out.
-  const lbAnimIdRef        = useRef(0);
 
   useEffect(() => {
     let s = document.getElementById("lux-css");
@@ -2346,9 +2336,6 @@ export default function WeddingGallery() {
     if (!strip) return;
 
     lbSlidingRef.current = true;
-    // Stamp this animation so lbDragStart can cancel it, and any stale
-    // onEnd callback (after interruption) sees a mismatched ID and bails.
-    const animId = ++lbAnimIdRef.current;
     setShowLbComments(false);
 
     // Each slot = 1/3 of strip width in px
@@ -2365,23 +2352,14 @@ export default function WeddingGallery() {
     function onEnd() {
       strip.removeEventListener('transitionend', onEnd);
 
-      // If this animation was superseded (user swiped again mid-flight), bail.
-      if (animId !== lbAnimIdRef.current) return;
+      // 2. Update React state (slots re-render with new idx)
+      setLightbox(l => ({
+        ...l,
+        idx: (l.idx + dir + photos.length) % photos.length,
+        zoomed: false,
+      }));
 
-      // 2. Force a synchronous React re-render so the centre slot already
-      //    has the new image BEFORE we snap the strip back to resting.
-      //    Without flushSync the setState is batched/async and the old image
-      //    briefly flashes at centre — the glitch you see on fast swipes.
-      flushSync(() => {
-        setLightbox(l => ({
-          ...l,
-          idx: (l.idx + dir + photos.length) % photos.length,
-          zoomed: false,
-        }));
-      });
-
-      // 3. Now snap strip back with no transition — centre slot already
-      //    shows the correct new image, so there is no visible flash.
+      // 3. Snap strip back with no transition
       strip.classList.remove('sliding');
       strip.style.transition = 'none';
       strip.style.transform  = '';
@@ -2396,7 +2374,7 @@ export default function WeddingGallery() {
 
     // Safety fallback if transitionend never fires (tab hidden, etc.)
     setTimeout(() => {
-      if (!lbSlidingRef.current || animId !== lbAnimIdRef.current) return;
+      if (!lbSlidingRef.current) return;
       strip.removeEventListener('transitionend', onEnd);
       onEnd();
     }, 500);
@@ -2405,25 +2383,7 @@ export default function WeddingGallery() {
   function navPhotoWithReset(dir) { lbSlide(dir); }
 
   function lbDragStart(e) {
-    if (lightbox.zoomed || photos.length < 2) return;
-
-    // If a slide animation is in-flight, cancel it instantly so the next
-    // swipe feels responsive rather than being silently dropped.
-    // Incrementing lbAnimIdRef makes the pending onEnd see a stale animId
-    // and exit without touching state or the strip.
-    if (lbSlidingRef.current) {
-      lbAnimIdRef.current++;
-      const strip = lbStripRef.current;
-      if (strip) {
-        strip.classList.remove('sliding', 'dragging');
-        strip.style.transition = 'none';
-        strip.style.transform  = '';
-        void strip.offsetHeight;   // flush layout so the snap is instant
-        strip.style.transition = '';
-      }
-      lbSlidingRef.current = false;
-    }
-
+    if (lightbox.zoomed || photos.length < 2 || lbSlidingRef.current) return;
     lbDragRef.current = {
       active: true,
       startX: e.clientX, startY: e.clientY,
