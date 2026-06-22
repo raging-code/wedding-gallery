@@ -50,9 +50,13 @@ const VIDEO_BUCKETS = [
   },
 ];
 
+// __PATCH_COMPRESSION_V1__
 // Limits
-const MAX_PHOTO_BYTES = 10 * 1024 * 1024;   // 10 MB
-const MAX_VIDEO_BYTES = 200 * 1024 * 1024;  // 200 MB
+// NOTE: client now compresses photos to WebP and videos via ffmpeg.wasm
+// before upload (see compressPhoto/compressVideo in WeddingGallery.js).
+// These remain as a server-side backstop, not the primary control.
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;   // 10 MB (raw, pre-compression safety valve)
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;  // 100 MB (post-compression backstop)
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
 

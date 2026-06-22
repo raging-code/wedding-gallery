@@ -1505,6 +1505,149 @@ async function b2Upload(file, type, uploaderName) {
   return publicUrl;
 }
 
+// __PATCH_COMPRESSION_V1__
+// ── Client-side compression (runs before b2Upload) ──────────────────────────
+// PHOTOS: Canvas resize + WebP re-encode. Supported on iOS 14+ (Sept 2020+)
+//         and all modern desktop/Android browsers — safe default in 2026.
+// VIDEOS: ffmpeg.wasm, single-threaded core (no SharedArrayBuffer, so no
+//         COOP/COEP headers needed — those would break loading B2 media
+//         cross-origin in the gallery itself). Loaded lazily from CDN so
+//         there's no npm install / build-config change required.
+
+const PHOTO_MAX_DIMENSION = 2048;   // px, longest edge
+const PHOTO_WEBP_QUALITY  = 0.83;
+const VIDEO_MAX_OUTPUT_BYTES = 100 * 1024 * 1024; // 100 MB backstop
+const VIDEO_SKIP_COMPRESSION_UNDER = 15 * 1024 * 1024; // already small — don't bother
+const VIDEO_MAX_HEIGHT = 720; // cap to 720p during re-encode
+
+/** Resize + re-encode an image File to WebP. Falls back to the original
+ *  file untouched if the browser can't produce WebP (very old browsers). */
+async function compressPhoto(file, onProgress) {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, PHOTO_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close?.();
+
+    const blob = await new Promise(resolve =>
+      canvas.toBlob(resolve, 'image/webp', PHOTO_WEBP_QUALITY)
+    );
+
+    // Some very old browsers silently return null or a PNG when WebP isn't
+    // supported — in that case just keep the original file.
+    if (!blob || blob.type !== 'image/webp') {
+      onProgress?.(100);
+      return file;
+    }
+
+    onProgress?.(100);
+    const newName = file.name.replace(/\.[a-zA-Z0-9]+$/, '') + '.webp';
+    return new File([blob], newName, { type: 'image/webp' });
+  } catch (err) {
+    console.warn('Photo compression failed, uploading original:', err);
+    onProgress?.(100);
+    return file;
+  }
+}
+
+// ── ffmpeg.wasm lazy loader (CDN, single-threaded core — no special headers) ─
+let _ffmpegInstance = null;
+let _ffmpegLoadPromise = null;
+
+async function loadFFmpeg() {
+  if (_ffmpegInstance) return _ffmpegInstance;
+  if (_ffmpegLoadPromise) return _ffmpegLoadPromise;
+
+  _ffmpegLoadPromise = (async () => {
+    const { FFmpeg } = await import('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
+    const { toBlobURL } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+
+    const ffmpeg = new FFmpeg();
+    const base = 'https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/esm';
+    await ffmpeg.load({
+      coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
+
+    _ffmpegInstance = ffmpeg;
+    return ffmpeg;
+  })();
+
+  return _ffmpegLoadPromise;
+}
+
+/** Re-encode a video File with ffmpeg.wasm: H.264, CRF 26, capped at 720p,
+ *  audio down to 128k AAC. Good visual quality at a fraction of the size.
+ *  Skips compression entirely for files already under
+ *  VIDEO_SKIP_COMPRESSION_UNDER (phone cameras already compress well, and
+ *  re-encoding a short clip rarely shrinks it further). If the encode would
+ *  still land over VIDEO_MAX_OUTPUT_BYTES, throws so the caller can show a
+ *  clear "trim your clip" error instead of silently shipping a huge file. */
+async function compressVideo(file, onProgress) {
+  if (file.size <= VIDEO_SKIP_COMPRESSION_UNDER) {
+    onProgress?.(100);
+    return file;
+  }
+
+  onProgress?.(0);
+  const ffmpeg = await loadFFmpeg();
+  onProgress?.(5);
+
+  const inputName  = 'input' + (file.name.match(/\.[a-zA-Z0-9]+$/)?.[0] || '.mp4');
+  const outputName = 'output.mp4';
+
+  const progressHandler = ({ progress }) => {
+    // ffmpeg reports 0..1; map onto 5..95 (load already took 0..5)
+    const pct = 5 + Math.min(95, Math.max(0, progress * 90));
+    onProgress?.(Math.round(pct));
+  };
+  ffmpeg.on('progress', progressHandler);
+
+  try {
+    const { fetchFile } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    await ffmpeg.writeFile(inputName, await fetchFile(file));
+
+    await ffmpeg.exec([
+      '-i', inputName,
+      '-vf', `scale=-2:'min(${VIDEO_MAX_HEIGHT},ih)'`,
+      '-c:v', 'libx264',
+      '-preset', 'veryfast',
+      '-crf', '26',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+      '-movflags', '+faststart',
+      outputName,
+    ]);
+
+    const data = await ffmpeg.readFile(outputName);
+    const blob = new Blob([data.buffer], { type: 'video/mp4' });
+
+    // cleanup wasm FS so repeated uploads in one session don't leak memory
+    await ffmpeg.deleteFile(inputName).catch(() => {});
+    await ffmpeg.deleteFile(outputName).catch(() => {});
+
+    onProgress?.(100);
+
+    if (blob.size > VIDEO_MAX_OUTPUT_BYTES) {
+      throw new Error(
+        `Even after compression this clip is ${(blob.size / 1024 / 1024).toFixed(0)}MB — please trim it shorter and try again.`
+      );
+    }
+
+    const newName = file.name.replace(/\.[a-zA-Z0-9]+$/, '') + '.mp4';
+    return new File([blob], newName, { type: 'video/mp4' });
+  } finally {
+    ffmpeg.off('progress', progressHandler);
+  }
+}
+
 
 // ── Reactions & Comments API helpers ────────────────────────────────────────
 // mediaKey is derived from the B2 object key — it's the stable identifier
@@ -2282,7 +2425,8 @@ export default function WeddingGallery() {
       const uploaded = [];
       for (let i = 0; i < previews.length; i++) {
         const p = previews[i];
-        const publicUrl = await b2Upload(p.file, 'photo', name);
+        const compressed = await compressPhoto(p.file);
+        const publicUrl = await b2Upload(compressed, 'photo', name);
         uploaded.push({ id: Date.now() + i, url: publicUrl, name: p.name, uploaderName: name });
         setUploadState(s => ({ ...s, progress: Math.round(((i + 1) / previews.length) * 100) }));
         URL.revokeObjectURL(p.url);
@@ -2299,16 +2443,20 @@ export default function WeddingGallery() {
     if (!videoPreview) return;
     const name = guestName.trim();
     if (!name) { setUploadState(s => ({ ...s, error: 'Please enter your name first' })); return; }
-    setUploadState({ active: true, progress: 0, error: null });
+    setUploadState({ active: true, progress: 0, error: null, stage: 'compressing' });
     try {
-      const publicUrl = await b2Upload(videoPreview.file, 'video', name);
+      const compressed = await compressVideo(videoPreview.file, (pct) => {
+        setUploadState(s => ({ ...s, progress: pct, stage: pct >= 100 ? 'uploading' : 'compressing' }));
+      });
+      setUploadState(s => ({ ...s, progress: 0, stage: 'uploading' }));
+      const publicUrl = await b2Upload(compressed, 'video', name);
       setVideos(prev => [{ id: Date.now(), url: publicUrl, name: videoPreview.name, uploaderName: name }, ...prev]);
       URL.revokeObjectURL(videoPreview.url);
       setVideoPreview(null);
-      setUploadState({ active: false, progress: 100, error: null });
+      setUploadState({ active: false, progress: 100, error: null, stage: null });
       setTimeout(() => setUploadState(s => ({ ...s, progress: 0 })), 1500);
     } catch (err) {
-      setUploadState({ active: false, progress: 0, error: err.message });
+      setUploadState({ active: false, progress: 0, error: err.message, stage: null });
     }
   }
 
@@ -2651,7 +2799,9 @@ export default function WeddingGallery() {
                   opacity: (!uploadState.active && !guestName.trim()) ? 0.5 : 1,
                 }}
               >
-                {uploadState.active ? `${uploadState.progress}%` : 'Upload'}
+                {uploadState.active
+                  ? (uploadState.stage === 'compressing' ? `Compressing… ${uploadState.progress}%` : `${uploadState.progress}%`)
+                  : 'Upload'}
               </button>
             </div>
           )}
@@ -2749,7 +2899,7 @@ export default function WeddingGallery() {
               </svg>
               Upload Photos
             </button>
-            <span className="lux-upload-hint">JPEG · PNG · WEBP · Up to 5 MB · Max 20 photos</span>
+            <span className="lux-upload-hint">JPEG · PNG · WEBP · Auto-compressed · Max 20 photos</span>
             <input
               ref={fileInputRef} type="file" multiple accept="image/*"
               style={{ display: "none" }}
@@ -2798,7 +2948,9 @@ export default function WeddingGallery() {
                   disabled={uploadState.active || !guestName.trim()}
                 >
                   {uploadState.active
-                    ? `Uploading… ${uploadState.progress}%`
+                    ? (uploadState.stage === 'compressing'
+                        ? `Compressing… ${uploadState.progress}%`
+                        : `Uploading… ${uploadState.progress}%`)
                     : "Send to Gallery"}
                 </button>
                 <div className="lux-send-hint">
