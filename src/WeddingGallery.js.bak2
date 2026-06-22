@@ -756,8 +756,6 @@ body {
   position: relative;
   display: flex; align-items: center; justify-content: center;
   background: #000; overflow: hidden;
-  /* Tell iOS we handle horizontal gestures here — prevents pointercancel */
-  touch-action: pan-y;
 }
 
 /* ── RIGHT PANE: social sidebar (desktop only) ───────────────────────── */
@@ -2462,32 +2460,19 @@ export default function WeddingGallery() {
     if (!drag.active) return;
     drag.active = false;
 
-    const strip = lbStripRef.current;
-
-    // Resolve drag axis.  On a fast flick, pointermove may not have fired
-    // with > 6 px of movement before pointerup — drag.locked stays null.
-    // Fall back to the endpoint displacement so quick flicks still register.
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
-    const elapsed = Math.max(1, Date.now() - drag.startTime);
-
-    let locked = drag.locked;
-    if (locked === null && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) {
-      locked = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
-    }
-
-    const wasHorizontal = locked === 'x';
+    const strip        = lbStripRef.current;
+    const wasHorizontal = drag.locked === 'x';
 
     if (!wasHorizontal) {
       if (strip) { strip.classList.remove('dragging'); strip.style.transform = ''; }
       return;
     }
 
+    const dx       = e.clientX - drag.startX;
+    const elapsed  = Math.max(1, Date.now() - drag.startTime);
     const velocity = Math.abs(dx) / elapsed;
 
-    // 0.30 instead of 0.45 — fast short flicks have high velocity but small
-    // displacement; the lower bar catches them without accepting accidental taps.
-    const FLICK     = 0.30;  // px/ms
+    const FLICK     = 0.45;  // px/ms — fast flick
     const THRESHOLD = 0.28;  // fraction of screen width to commit
 
     const commit = velocity > FLICK || Math.abs(dx) > window.innerWidth * THRESHOLD;
@@ -2971,8 +2956,6 @@ export default function WeddingGallery() {
                       src={photos[(lightbox.idx - 1 + photos.length) % photos.length].url}
                       alt=""
                       draggable={false}
-                      decoding="async"
-                      loading="eager"
                     />
                   )}
                 </div>
@@ -2985,8 +2968,6 @@ export default function WeddingGallery() {
                       src={currentImg.url}
                       alt=""
                       draggable={false}
-                      decoding="sync"
-                      loading="eager"
                     />
                   )}
                 </div>
@@ -2997,8 +2978,6 @@ export default function WeddingGallery() {
                       src={photos[(lightbox.idx + 1) % photos.length].url}
                       alt=""
                       draggable={false}
-                      decoding="async"
-                      loading="eager"
                     />
                   )}
                 </div>
