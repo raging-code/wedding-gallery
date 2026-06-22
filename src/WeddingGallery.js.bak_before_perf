@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { flushSync } from 'react-dom';
 
 const LUXURY_CSS = `
@@ -86,10 +86,6 @@ body {
 }
 
 @keyframes shimmer {
-  0%, 100% { opacity: 0.55; }
-  50%       { opacity: 1; }
-}
-@keyframes shimmerGradient {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }
 }
@@ -374,10 +370,8 @@ body {
 }
 .lux-shimmer {
   position: absolute; inset: 0;
-  background: rgba(255,255,255,0.14);
-  animation: shimmer 1.8s ease-in-out infinite;
-  pointer-events: none;
-  contain: strict;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
+  background-size: 200%; animation: shimmer 3.8s ease-in-out infinite; pointer-events: none;
 }
 
 /* Play-icon overlay on video story thumbnails */
@@ -617,7 +611,6 @@ body {
     0 20px 60px rgba(196,116,142,0.11),
     0 44px 88px rgba(28,15,20,0.05);
   position: relative; overflow: hidden;
-  contain: content;
   animation: scaleIn 1.0s var(--ease-cinematic) 0.14s both;
 }
 
@@ -707,9 +700,8 @@ body {
 .lux-photo-item {
   cursor: pointer; overflow: hidden;
   background: var(--pink-mid);
-  position: relative; border: 2px solid transparent; transition: border-color .3s var(--ease-out), box-shadow .3s var(--ease-out);
+  position: relative; border: 2px solid transparent; transition: all .3s var(--ease-out);
   height: 100%;
-  contain: layout style;
 }
 /* On mobile, featured photo is a single normal-sized tile like the rest */
 @media (max-width: 639px) {
@@ -719,8 +711,8 @@ body {
 .lux-photo-item.selected { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
 .lux-photo-item img {
   width: 100% !important; height: 100% !important; object-fit: cover !important; display: block;
-  transition: transform .28s var(--ease-out), filter .22s;
-  /* Promote to GPU only while hovered — avoids wasting layers for all images */
+  transition: transform .65s var(--ease-out), filter .3s;
+  /* Avoid compositing cost for all grid images on mobile */
   will-change: auto;
 }
 .lux-photo-item:hover img { transform: scale(1.05); opacity: 0.96; }
@@ -741,7 +733,7 @@ body {
 .lux-photo-item:hover .lux-photo-hover { opacity: 1; }
 .lux-photo-view-icon {
   width: 28px; height: 28px; border-radius: 50%;
-  background: rgba(255,255,255,0.28);
+  background: rgba(255,255,255,0.16); backdrop-filter: blur(8px);
   border: 0.5px solid rgba(255,255,255,0.40);
   display: flex; align-items: center; justify-content: center;
 }
@@ -961,7 +953,6 @@ body {
   display: flex; align-items: center; justify-content: center;
   height: 100%;
   background: #000;
-  contain: layout paint;
 }
 .lux-lb-slot img {
   max-width: 100%; max-height: 100%; object-fit: contain;
@@ -1006,8 +997,6 @@ body {
   top: -60px;
   z-index: 0;
   pointer-events: none;
-  will-change: transform, opacity;
-  contain: strict;
   width:  var(--petal-size);
   height: calc(var(--petal-size) * 1.2);
   animation:
@@ -1284,23 +1273,12 @@ body {
   scroll-snap-align: start; scroll-snap-stop: normal;
   display: flex; align-items: center; justify-content: center;
   position: relative;
-  /* Promote GPU layer only on active/adjacent slides via JS */
-  will-change: auto;
+  /* GPU layer per slide — eliminates compositing stutter during snap */
+  will-change: transform;
   /* Prevent layout bleed from icon bar / seek bar repaints */
   contain: layout style;
   /* iOS: eliminate rubber-band behind the slide */
   overscroll-behavior: contain;
-}
-/* GPU promotion: only the active slide and its neighbours */
-.lux-reel-slide.reel-active,
-.lux-reel-slide.reel-adjacent {
-  will-change: transform;
-}
-/* Skip paint/layout for slides far from the viewport.
-   The browser will skip them completely until they near the scroll position. */
-.lux-reel-slide:not(.reel-active):not(.reel-adjacent) {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 100vh;
 }
 .lux-reel-video {
   width: 100%; height: 100%;
@@ -1584,9 +1562,8 @@ body {
 /* Loading shimmer for counts */
 .lux-social-loading {
   display: inline-block; width: 40px; height: 11px; border-radius: 6px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.22), rgba(255,255,255,0.08));
-  background-size: 200%;
-  animation: shimmerGradient 1.8s ease-in-out infinite;
+  background: rgba(255,255,255,0.12);
+  animation: shimmer 1.8s ease-in-out infinite;
 }
 
 `
@@ -2355,7 +2332,7 @@ async function b2List(type) {
 // shared ref array, so dragging tracks the finger with zero extra
 // re-renders of the parent (only this small bar re-renders, ~4x/sec, and
 // only for whichever video is actually playing).
-const ReelSeekBar = memo(function ReelSeekBar({ reelRefs, idx, active }) {
+function ReelSeekBar({ reelRefs, idx, active }) {
   const [progress, setProgress] = useState(0);
   const trackRef   = useRef(null);
   const draggingRef = useRef(false);
@@ -2365,14 +2342,9 @@ const ReelSeekBar = memo(function ReelSeekBar({ reelRefs, idx, active }) {
     const video = reelRefs.current[idx];
     if (!video) return;
 
-    let rafId = null;
     const sync = () => {
       if (draggingRef.current) return;
-      if (rafId) return; // already scheduled
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        setProgress(video.duration ? video.currentTime / video.duration : 0);
-      });
+      setProgress(video.duration ? video.currentTime / video.duration : 0);
     };
     video.addEventListener("timeupdate", sync);
     video.addEventListener("loadedmetadata", sync);
@@ -2380,7 +2352,6 @@ const ReelSeekBar = memo(function ReelSeekBar({ reelRefs, idx, active }) {
     return () => {
       video.removeEventListener("timeupdate", sync);
       video.removeEventListener("loadedmetadata", sync);
-      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [reelRefs, idx, active]);
 
@@ -2429,7 +2400,7 @@ const ReelSeekBar = memo(function ReelSeekBar({ reelRefs, idx, active }) {
       </div>
     </div>
   );
-});
+}
 
 // ── StoryThumb ────────────────────────────────────────────────────────────────
 // Extracts a poster frame from a video URL by:
@@ -2440,7 +2411,7 @@ const ReelSeekBar = memo(function ReelSeekBar({ reelRefs, idx, active }) {
 //
 // Fallback: if the extract fails (CORS, codec, etc.) we show the blush
 // placeholder instead of a broken image.
-const StoryThumb = memo(function StoryThumb({ url }) {
+function StoryThumb({ url }) {
   const canvasRef = useRef(null);
   const [failed, setFailed] = useState(false);
 
@@ -2521,7 +2492,7 @@ const StoryThumb = memo(function StoryThumb({ url }) {
       aria-hidden="true"
     />
   );
-});
+}
 
 export default function WeddingGallery() {
   const [photos, setPhotos]         = useState([]);
@@ -2563,13 +2534,9 @@ export default function WeddingGallery() {
   const lbAnimIdRef        = useRef(0);
 
   useEffect(() => {
-    // Only inject once — avoid re-assigning the full CSS string on every
-    // StrictMode double-invoke or hot-reload re-mount.
-    if (document.getElementById("lux-css")) return;
-    const s = document.createElement("style");
-    s.id = "lux-css";
+    let s = document.getElementById("lux-css");
+    if (!s) { s = document.createElement("style"); s.id = "lux-css"; document.head.appendChild(s); }
     s.textContent = LUXURY_CSS;
-    document.head.appendChild(s);
   }, []);
 
   // Lock background scroll while the Lightbox or Reels viewer is open —
@@ -2653,20 +2620,6 @@ export default function WeddingGallery() {
   useEffect(() => {
     if (!reels.open) return;
     const els = reelRefs.current.filter(Boolean);
-
-    function updateGpuLayers(activeIdx) {
-      // Promote active + immediate neighbours; demote everything else.
-      els.forEach((vid) => {
-        const slide = vid.closest('.lux-reel-slide');
-        if (!slide) return;
-        const i = Number(vid.dataset.reelIdx);
-        const isActive   = i === activeIdx;
-        const isAdjacent = Math.abs(i - activeIdx) === 1;
-        slide.classList.toggle('reel-active',   isActive);
-        slide.classList.toggle('reel-adjacent', isAdjacent && !isActive);
-      });
-    }
-
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         const vid = entry.target;
@@ -2674,22 +2627,19 @@ export default function WeddingGallery() {
           vid.play().catch(() => {});
           const idx = Number(vid.dataset.reelIdx);
           setReels(r => (r.idx === idx ? r : { ...r, idx }));
-          updateGpuLayers(idx);
         } else {
           vid.pause();
         }
       });
     }, { threshold: [0, 0.6, 1], rootMargin: '0px 0px' });
     els.forEach(el => observer.observe(el));
-    // Initial promotion for the starting slide
-    updateGpuLayers(reels.idx);
     return () => observer.disconnect();
-  }, [reels.open, videos.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [reels.open, videos.length]);
 
-  const updateGuestName = useCallback((value) => {
+  function updateGuestName(value) {
     setGuestName(value);
     try { localStorage.setItem('lux_guest_name', value); } catch { /* private mode, etc. */ }
-  }, []);
+  }
 
   function handleFiles(fileList) {
     Array.from(fileList).filter(f => f.type.startsWith("image/"))
@@ -2752,26 +2702,26 @@ export default function WeddingGallery() {
     }
   }
 
-  const openReels = useCallback((idx) => {
+  function openReels(idx) {
     setReels({ open: true, idx });
-  }, []);
+  }
 
-  const closeReels = useCallback(() => {
+  function closeReels() {
     reelRefs.current.forEach(v => v && v.pause());
     setReels(r => ({ ...r, open: false }));
-  }, []);
+  }
 
-  const goToReel = useCallback((targetIdx) => {
+  function goToReel(targetIdx) {
     if (targetIdx < 0 || targetIdx >= videos.length) return;
     const el = reelRefs.current[targetIdx];
     el?.closest(".lux-reel-slide")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [videos.length]);
+  }
 
-  const openLightbox = useCallback((idx) => {
+  function openLightbox(idx) {
     if (selectMode) { toggleSelect(idx); return; }
     setLightbox({ open: true, idx, zoomed: false });
     setShowLbComments(false);
-  }, [selectMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   // ── lbSlide: core animation — animate FIRST, update state AFTER ──────────
   // dir = +1 (next) or -1 (prev).
@@ -3024,10 +2974,7 @@ export default function WeddingGallery() {
     }
   }
 
-  const visiblePhotos = useMemo(
-    () => showAll ? photos : photos.slice(0, 9),
-    [photos, showAll]
-  );
+  const visiblePhotos = showAll ? photos : photos.slice(0, 9);
   const currentImg = photos[lightbox.idx];
 
   return (
@@ -3038,23 +2985,18 @@ export default function WeddingGallery() {
 
       {/* Floating petals — deferred until idle to not block first paint.
            Hidden entirely while Reels is open to free up GPU budget. */}
-      {petalsReady && !reels.open && (() => {
-        // Full set for desktop; trimmed set for mobile/touch to protect FPS.
-        const isMobile = window.matchMedia('(max-width: 639px), (hover: none)').matches;
-        const allPetals = [
-          { l:'8%',  size:10, dur:14, delay:0,    x:40,  r:280, sway:16, swayDur:3.2 },
-          { l:'18%', size:7,  dur:18, delay:3,    x:-30, r:320, sway:12, swayDur:2.8 },
-          { l:'32%', size:12, dur:12, delay:6,    x:55,  r:240, sway:20, swayDur:3.6 },
-          { l:'47%', size:8,  dur:16, delay:1.5,  x:-45, r:300, sway:14, swayDur:3.0 },
-          { l:'61%', size:11, dur:13, delay:8,    x:35,  r:260, sway:18, swayDur:2.6 },
-          { l:'75%', size:7,  dur:19, delay:4,    x:-25, r:340, sway:10, swayDur:3.4 },
-          { l:'88%', size:9,  dur:15, delay:10,   x:50,  r:220, sway:15, swayDur:3.0 },
-          { l:'24%', size:6,  dur:20, delay:12,   x:-38, r:380, sway:8,  swayDur:2.4 },
-          { l:'54%', size:13, dur:11, delay:7,    x:42,  r:290, sway:22, swayDur:3.8 },
-          { l:'90%', size:8,  dur:17, delay:2,    x:-20, r:310, sway:11, swayDur:2.9 },
-        ];
-        const petalData = isMobile ? allPetals.slice(0, 4) : allPetals;
-        return petalData.map((p, i) => (
+      {petalsReady && !reels.open && [
+        { l:'8%',  size:10, dur:14, delay:0,    x:40,  r:280, sway:16, swayDur:3.2 },
+        { l:'18%', size:7,  dur:18, delay:3,    x:-30, r:320, sway:12, swayDur:2.8 },
+        { l:'32%', size:12, dur:12, delay:6,    x:55,  r:240, sway:20, swayDur:3.6 },
+        { l:'47%', size:8,  dur:16, delay:1.5,  x:-45, r:300, sway:14, swayDur:3.0 },
+        { l:'61%', size:11, dur:13, delay:8,    x:35,  r:260, sway:18, swayDur:2.6 },
+        { l:'75%', size:7,  dur:19, delay:4,    x:-25, r:340, sway:10, swayDur:3.4 },
+        { l:'88%', size:9,  dur:15, delay:10,   x:50,  r:220, sway:15, swayDur:3.0 },
+        { l:'24%', size:6,  dur:20, delay:12,   x:-38, r:380, sway:8,  swayDur:2.4 },
+        { l:'54%', size:13, dur:11, delay:7,    x:42,  r:290, sway:22, swayDur:3.8 },
+        { l:'90%', size:8,  dur:17, delay:2,    x:-20, r:310, sway:11, swayDur:2.9 },
+      ].map((p, i) => (
         <div key={i} className="lux-petal" style={{
           left: p.l,
           '--petal-size':     `${p.size}px`,
@@ -3072,8 +3014,7 @@ export default function WeddingGallery() {
               stroke="rgba(184,144,74,0.25)" strokeWidth="0.6" strokeLinecap="round" />
           </svg>
         </div>
-      ));
-      })()}
+      ))}
 
       <div className="lux-page">
 
@@ -3571,8 +3512,7 @@ export default function WeddingGallery() {
                       alt=""
                       draggable={false}
                       decoding="async"
-                      loading="lazy"
-                      fetchPriority="low"
+                      loading="eager"
                     />
                   )}
                 </div>
@@ -3585,9 +3525,8 @@ export default function WeddingGallery() {
                       src={currentImg.url}
                       alt=""
                       draggable={false}
-                      decoding="async"
+                      decoding="sync"
                       loading="eager"
-                      fetchPriority="high"
                     />
                   )}
                 </div>
@@ -3599,8 +3538,7 @@ export default function WeddingGallery() {
                       alt=""
                       draggable={false}
                       decoding="async"
-                      loading="lazy"
-                      fetchPriority="low"
+                      loading="eager"
                     />
                   )}
                 </div>
@@ -3763,7 +3701,7 @@ export default function WeddingGallery() {
               {vid.uploaderName && (
                 <div className="lux-reel-caption">Shared by <b>{vid.uploaderName}</b></div>
               )}
-              <ReelSeekBar reelRefs={reelRefs} idx={idx} active={reels.open && Math.abs(idx - reels.idx) <= 1} />
+              <ReelSeekBar reelRefs={reelRefs} idx={idx} active={reels.open} />
               {/* Facebook Reels-style: icon bar on the right + expandable comment sheet */}
               <ReelSocialBar
                 mediaKey={mediaKeyFromItem(vid)}
