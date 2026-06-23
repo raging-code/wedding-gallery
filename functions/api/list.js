@@ -39,14 +39,25 @@ export async function onRequestGet(context) {
 
   const pool = type === 'photo' ? PHOTO_BUCKETS : VIDEO_BUCKETS;
 
-  try {
-    const results = await Promise.all(pool.map((slot, idx) => listBucket(slot, env, type, idx)));
-    const merged  = results.flat().sort((a, b) => b.uploaded - a.uploaded);
-    return Response.json({ items: merged });
-  } catch (err) {
-    console.error('list error:', err);
-    return Response.json({ error: 'Failed to list media' }, { status: 502 });
-  }
+  // Each bucket is isolated — a failure in one (bad creds, B2 permission
+  // error, transient 5xx, etc.) no longer takes down the other bucket's
+  // results for this media type.
+  const errors = [];
+  const results = await Promise.all(pool.map(async (slot, idx) => {
+    try {
+      return await listBucket(slot, env, type, idx);
+    } catch (err) {
+      console.error(`list error [${slot.bucketName}]:`, err);
+      errors.push(`${env[slot.bucketName] || slot.bucketName}: ${err.message || err}`);
+      return [];
+    }
+  }));
+
+  const merged = results.flat().sort((a, b) => b.uploaded - a.uploaded);
+  const body = { items: merged };
+  // Visible right in DevTools → Network → list?type=... → Preview.
+  if (errors.length) body._errors = errors;
+  return Response.json(body);
 }
 
 async function listBucket(slot, env, type, bidx) {
@@ -100,8 +111,10 @@ async function listBucket(slot, env, type, bidx) {
   });
 
   if (!resp.ok) {
-    console.error('B2 list failed', resp.status, await resp.text());
-    return [];
+    const errText = await resp.text();
+    const code = (errText.match(/<Code>([^<]+)<\/Code>/) || [])[1] || resp.status;
+    console.error('B2 list failed', resp.status, errText);
+    throw new Error(`B2 list failed (${resp.status} ${code}) for bucket "${bucketName}"`);
   }
 
   const xml   = await resp.text();

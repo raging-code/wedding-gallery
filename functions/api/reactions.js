@@ -35,9 +35,14 @@ function isRateLimited(request, { max, windowMs }) {
 function isValidMediaKey(key) {
   if (typeof key !== 'string') return false;
   if (key.length === 0 || key.length > 512) return false;
-  // Must start with photos/ or videos/ (the only valid prefixes used by upload.js)
-  const validPrefix = key.startsWith('photos/') || key.startsWith('videos/');
-  if (!validPrefix) return false;
+  // The frontend (b2List/mediaKeyFromItem in WeddingGallery.js) sends the
+  // bare filename portion of the B2 object key, e.g.
+  // "1716000000000_g_Q2FybG8.jpg" — NOT the full "photos/<name>" key.
+  // Accept either that bare shape or the full prefixed key, so this stays
+  // compatible with any caller that does pass the prefix.
+  const hasPathPrefix  = key.startsWith('photos/') || key.startsWith('videos/');
+  const bareFilenameRe = /^\d+_[A-Za-z0-9._-]+\.[A-Za-z0-9]+$/;
+  if (!hasPathPrefix && !bareFilenameRe.test(key)) return false;
   // No path traversal, null bytes, or shell-special chars
   if (key.includes('..') || key.includes('\x00') || /[<>"'\\]/.test(key)) return false;
   return true;
