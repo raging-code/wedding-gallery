@@ -36,9 +36,10 @@ function isValidMediaKey(key) {
   if (typeof key !== 'string') return false;
   if (key.length === 0 || key.length > 512) return false;
   // Must start with photos/ or videos/ (the only valid prefixes used by upload.js)
-  if (!/^(photos|videos)//.test(key)) return false;
+  const validPrefix = key.startsWith('photos/') || key.startsWith('videos/');
+  if (!validPrefix) return false;
   // No path traversal, null bytes, or shell-special chars
-  if (/(\.\.|\x00|[<>"'\\])/.test(key)) return false;
+  if (key.includes('..') || key.includes('\x00') || /[<>"'\\]/.test(key)) return false;
   return true;
 }
 // ─────────────────────────────────────────────────────────────────────────────

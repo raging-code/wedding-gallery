@@ -142,13 +142,54 @@ function isValidMediaKey(key) {
   if (typeof key !== 'string') return false;
   if (key.length === 0 || key.length > 512) return false;
   // Must start with photos/ or videos/ (the only valid prefixes used by upload.js)
-  if (!/^(photos|videos)\//.test(key)) return false;
+  const validPrefix = key.startsWith('photos/') || key.startsWith('videos/');
+  if (!validPrefix) return false;
   // No path traversal, null bytes, or shell-special chars
-  if (/(\\.\\.|\\x00|[<>"'\\\\])/.test(key)) return false;
+  if (key.includes('..') || key.includes('\\x00') || /[<>"'\\\\]/.test(key)) return false;
   return true;
 }
 // ─────────────────────────────────────────────────────────────────────────────
 `;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PATCH 0 — Repair broken isValidMediaKey regex from a prior patch run
+// (Safe no-op if the bad regex is not present)
+// ═══════════════════════════════════════════════════════════════════════════════
+console.log('\n\x1b[1m[0/9] Repair broken regex from prior run (if present)\x1b[0m');
+
+{
+  // The first version of this patch wrote a broken regex: !/^(photos|videos)//.test()
+  // esbuild rejects it with "Unexpected .". This step fixes it in-place.
+  const BAD_MARKER = "if (!/^(photos|videos)//.test(key)) return false;";
+  const GOOD_FN = `function isValidMediaKey(key) {
+  if (typeof key !== 'string') return false;
+  if (key.length === 0 || key.length > 512) return false;
+  // Must start with photos/ or videos/ (the only valid prefixes used by upload.js)
+  const validPrefix = key.startsWith('photos/') || key.startsWith('videos/');
+  if (!validPrefix) return false;
+  // No path traversal, null bytes, or shell-special chars
+  if (key.includes('..') || key.includes('\\x00') || /[<>"'\\\\]/.test(key)) return false;
+  return true;
+}`;
+
+  for (const file of ['functions/api/comments.js', 'functions/api/reactions.js']) {
+    const full = p(file);
+    if (!existsSync(full)) continue;
+    let content = readFileSync(full, 'utf8');
+    if (!content.includes(BAD_MARKER)) {
+      console.log(`${SKIP}  ${file} — regex already clean`);
+      skipCount++;
+      continue;
+    }
+    // Replace the entire bad isValidMediaKey function
+    const fnStart = content.indexOf('function isValidMediaKey');
+    const fnEnd   = content.indexOf('\n}', fnStart) + 2;
+    const fixed   = content.slice(0, fnStart) + GOOD_FN + content.slice(fnEnd);
+    writeFileSync(full, fixed, 'utf8');
+    console.log(`${PASS}  Fixed broken isValidMediaKey regex in: ${file}`);
+    patchCount++;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PATCH 1 — Delete debug-env.js (CRITICAL)
@@ -285,12 +326,24 @@ patch(
 }`
 );
 
-// Inject shared helpers at the top of comments.js (after the opening comment block)
+// Inject shared helpers at the top of comments.js (or fix broken regex from prior run)
 {
   let src = read('functions/api/comments.js');
-  const marker = '// ── In-memory rate limiter';
-  if (!src.includes(marker)) {
-    // Inject after the opening JSDoc comment block
+  const marker   = '// ── In-memory rate limiter';
+  const badRegex = "if (!/^(photos|videos)//.test(key)) return false;";
+  const goodFn   = "const validPrefix = key.startsWith('photos/') || key.startsWith('videos/');";
+
+  if (src.includes(badRegex)) {
+    // Previous patch run wrote a broken regex — fix it in place
+    const fixed = src
+      .replace(
+        "if (!/^(photos|videos)//.test(key)) return false;\n  // No path traversal, null bytes, or shell-special chars\n  if (/(\\.\\.\\.|\\x00|[<>\"'\\\\])/.test(key)) return false;",
+        goodFn + "\n  if (!validPrefix) return false;\n  // No path traversal, null bytes, or shell-special chars\n  if (key.includes('..') || key.includes('\\x00') || /[<>\"'\\\\]/.test(key)) return false;"
+      );
+    write('functions/api/comments.js', fixed);
+    console.log(`    └─ Fixed broken regex in isValidMediaKey (comments.js)`);
+  } else if (!src.includes(marker)) {
+    // Fresh file — inject everything
     const insertAfter = `/**\n * /api/comments  — GET thread, POST new comment\n * Requires D1 binding named "DB" in wrangler.toml\n */\n`;
     if (src.includes(insertAfter)) {
       const patched = src.replace(insertAfter, insertAfter + RATE_LIMITER_CODE + MEDIA_KEY_VALIDATOR);
@@ -298,7 +351,7 @@ patch(
       console.log(`    └─ Injected rate-limiter + mediaKey validator into comments.js`);
     }
   } else {
-    console.log(`${SKIP}  comments.js — helpers already injected`);
+    console.log(`${SKIP}  comments.js — helpers already injected and correct`);
     skipCount++;
   }
 }
@@ -424,11 +477,22 @@ patch(
 }`
 );
 
-// Inject shared helpers into reactions.js
+// Inject shared helpers into reactions.js (or fix broken regex from prior run)
 {
   let src = read('functions/api/reactions.js');
-  const marker = '// ── In-memory rate limiter';
-  if (!src.includes(marker)) {
+  const marker   = '// ── In-memory rate limiter';
+  const badRegex = "if (!/^(photos|videos)//.test(key)) return false;";
+  const goodFn   = "const validPrefix = key.startsWith('photos/') || key.startsWith('videos/');";
+
+  if (src.includes(badRegex)) {
+    const fixed = src
+      .replace(
+        "if (!/^(photos|videos)//.test(key)) return false;\n  // No path traversal, null bytes, or shell-special chars\n  if (/(\\.\\.\\.|\\x00|[<>\"'\\\\])/.test(key)) return false;",
+        goodFn + "\n  if (!validPrefix) return false;\n  // No path traversal, null bytes, or shell-special chars\n  if (key.includes('..') || key.includes('\\x00') || /[<>\"'\\\\]/.test(key)) return false;"
+      );
+    write('functions/api/reactions.js', fixed);
+    console.log(`    └─ Fixed broken regex in isValidMediaKey (reactions.js)`);
+  } else if (!src.includes(marker)) {
     const insertAfter = `/**\n * /api/reactions  — GET summary, POST new reaction\n * Requires D1 binding named "DB" in wrangler.toml\n */\n`;
     if (src.includes(insertAfter)) {
       const patched = src.replace(insertAfter, insertAfter + RATE_LIMITER_CODE + MEDIA_KEY_VALIDATOR);
@@ -436,7 +500,7 @@ patch(
       console.log(`    └─ Injected rate-limiter + mediaKey validator into reactions.js`);
     }
   } else {
-    console.log(`${SKIP}  reactions.js — helpers already injected`);
+    console.log(`${SKIP}  reactions.js — helpers already injected and correct`);
     skipCount++;
   }
 }
