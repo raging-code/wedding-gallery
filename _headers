@@ -27,6 +27,11 @@
   # Permissions-Policy — disable browser features the app never uses
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), serial=()
 
+/static/*
+  # Filenames are content-hashed by the build (e.g. main.<hash>.js) — a new
+  # deploy always produces new filenames, so caching these forever is safe.
+  Cache-Control: public, max-age=31536000, immutable
+
 /api/*
   Cache-Control: no-store
   # API responses must not be cached or shared
