@@ -40,7 +40,7 @@ export async function onRequestGet(context) {
   const pool = type === 'photo' ? PHOTO_BUCKETS : VIDEO_BUCKETS;
 
   try {
-    const results = await Promise.all(pool.map(slot => listBucket(slot, env, type)));
+    const results = await Promise.all(pool.map((slot, idx) => listBucket(slot, env, type, idx)));
     const merged  = results.flat().sort((a, b) => b.uploaded - a.uploaded);
     return Response.json({ items: merged });
   } catch (err) {
@@ -49,7 +49,7 @@ export async function onRequestGet(context) {
   }
 }
 
-async function listBucket(slot, env, type) {
+async function listBucket(slot, env, type, bidx) {
   const keyId      = env[slot.keyId];
   const appKey     = env[slot.appKey];
   const bucketName = env[slot.bucketName];
@@ -117,11 +117,11 @@ async function listBucket(slot, env, type) {
     if (!key) continue;
     rawItems.push({ key, size, uploaded: lastMod ? new Date(lastMod).getTime() : 0 });
   }
-  // Generate presigned GET URLs for private bucket access (valid 24 hours)
-  return Promise.all(rawItems.map(async item => ({
+  // Return proxy URLs — browser fetches via /api/media (CF<->B2 egress is free)
+  return rawItems.map(item => ({
     ...item,
-    url: await generatePresignedGet({ keyId, appKey, endpoint, bucketName, fileKey: item.key }),
-  })));
+    url: `/api/media?key=${encodeURIComponent(item.key)}&btype=${type}&bidx=${bidx}`,
+  }));
 }
 
 function tag(xml, name) {
@@ -129,45 +129,6 @@ function tag(xml, name) {
   return m ? m[1].trim() : '';
 }
 
-
-// ── Pre-signed GET via AWS Signature V4 (B2 S3-compat) — private bucket support
-async function generatePresignedGet({ keyId, appKey, endpoint, bucketName, fileKey, expiresIn = 86400 }) {
-  const region     = endpoint.split('.')[1] || 'us-west-004';
-  const service    = 's3';
-  const host       = endpoint;
-  const now        = new Date();
-  const amzDate    = toAmzDate(now);
-  const dateStamp  = amzDate.slice(0, 8);
-  const credScope  = `${dateStamp}/${region}/${service}/aws4_request`;
-  const signedHeaders = 'host';
-  const canonicalUri  = `/${bucketName}/${encodeURIComponent(fileKey).replace(/%2F/g, '/')}`;
-
-  const queryParams = new URLSearchParams({
-    'X-Amz-Algorithm':     'AWS4-HMAC-SHA256',
-    'X-Amz-Credential':    `${keyId}/${credScope}`,
-    'X-Amz-Date':          amzDate,
-    'X-Amz-Expires':       String(expiresIn),
-    'X-Amz-SignedHeaders': signedHeaders,
-  });
-  queryParams.sort();
-  const canonicalQuery   = queryParams.toString();
-  const canonicalHeaders = `host:${host}\n`;
-  const canonicalRequest = [
-    'GET', canonicalUri, canonicalQuery,
-    canonicalHeaders, signedHeaders, 'UNSIGNED-PAYLOAD',
-  ].join('\n');
-
-  const strToSign = [
-    'AWS4-HMAC-SHA256', amzDate, credScope,
-    await sha256hex(canonicalRequest),
-  ].join('\n');
-
-  const sigKey = await deriveSigningKey(appKey, dateStamp, region, service);
-  const sigHex = await hmacHex(sigKey, strToSign);
-
-  queryParams.set('X-Amz-Signature', sigHex);
-  return `https://${host}${canonicalUri}?${queryParams.toString()}`;
-}
 
 // ── Crypto helpers (duplicated here — Pages Functions don't share modules) ────
 function toAmzDate(d) {

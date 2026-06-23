@@ -140,9 +140,10 @@ export async function onRequestPost(context) {
   }
 
   // ── Pick bucket (deterministic round-robin by filename hash) ────────────
-  const pool = type === 'photo' ? PHOTO_BUCKETS : VIDEO_BUCKETS;
+  const pool    = type === 'photo' ? PHOTO_BUCKETS : VIDEO_BUCKETS;
   const slotIdx = simpleHash(sanitized) % pool.length;
   const slot    = pool[slotIdx];
+  const bidx    = slotIdx; // 0 or 1 — used to build the proxy URL
 
   // Resolve env var names to actual values
   const keyId      = env[slot.keyId];
@@ -155,12 +156,14 @@ export async function onRequestPost(context) {
     return jsonError('Server configuration error', 500);
   }
 
-  // ── Generate pre-signed URL via B2 S3-compatible API ────────────────────
+  // ── Generate pre-signed PUT URL via B2 S3-compatible API ─────────────────
+  // publicUrl is served through the CF proxy (/api/media) — browser never
+  // contacts B2 directly for reads, so B2 download quota is not consumed.
   try {
     const uploadUrl = await generatePresignedPut({
       keyId, appKey, endpoint, bucketName, fileKey, contentType,
     });
-    const publicUrl = await generatePresignedGet({ keyId, appKey, endpoint, bucketName, fileKey });
+    const publicUrl = `/api/media?key=${encodeURIComponent(fileKey)}&btype=${type}&bidx=${bidx}`;
 
     return jsonOk({ uploadUrl, fileKey, publicUrl });
   } catch (err) {
@@ -210,45 +213,6 @@ async function generatePresignedPut({ keyId, appKey, endpoint, bucketName, fileK
   return `https://${host}${canonicalUri}?${queryParams.toString()}`;
 }
 
-
-// ── Pre-signed GET via AWS Signature V4 (B2 S3-compat) — private bucket support
-async function generatePresignedGet({ keyId, appKey, endpoint, bucketName, fileKey, expiresIn = 86400 }) {
-  const region     = endpoint.split('.')[1] || 'us-west-004';
-  const service    = 's3';
-  const host       = endpoint;
-  const now        = new Date();
-  const amzDate    = toAmzDate(now);
-  const dateStamp  = amzDate.slice(0, 8);
-  const credScope  = `${dateStamp}/${region}/${service}/aws4_request`;
-  const signedHeaders = 'host';
-  const canonicalUri  = `/${bucketName}/${encodeURIComponent(fileKey).replace(/%2F/g, '/')}`;
-
-  const queryParams = new URLSearchParams({
-    'X-Amz-Algorithm':     'AWS4-HMAC-SHA256',
-    'X-Amz-Credential':    `${keyId}/${credScope}`,
-    'X-Amz-Date':          amzDate,
-    'X-Amz-Expires':       String(expiresIn),
-    'X-Amz-SignedHeaders': signedHeaders,
-  });
-  queryParams.sort();
-  const canonicalQuery   = queryParams.toString();
-  const canonicalHeaders = `host:${host}\n`;
-  const canonicalRequest = [
-    'GET', canonicalUri, canonicalQuery,
-    canonicalHeaders, signedHeaders, 'UNSIGNED-PAYLOAD',
-  ].join('\n');
-
-  const strToSign = [
-    'AWS4-HMAC-SHA256', amzDate, credScope,
-    await sha256hex(canonicalRequest),
-  ].join('\n');
-
-  const sigKey = await deriveSigningKey(appKey, dateStamp, region, service);
-  const sigHex = await hmacHex(sigKey, strToSign);
-
-  queryParams.set('X-Amz-Signature', sigHex);
-  return `https://${host}${canonicalUri}?${queryParams.toString()}`;
-}
 
 // ── Crypto helpers ────────────────────────────────────────────────────────────
 function toAmzDate(d) {
