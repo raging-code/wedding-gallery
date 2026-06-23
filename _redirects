@@ -1,2 +1,6 @@
+# Block direct browser access to backup directories
+/__backup_v3__/*  /index.html  404
+/__backup__/*     /index.html  404
+
 # SPA fallback — Cloudflare Pages
 /*  /index.html  200

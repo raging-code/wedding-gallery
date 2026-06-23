@@ -21,3 +21,6 @@ __backup__/
 # B2 / Cloudflare secrets — NEVER commit real env files
 .dev.vars
 .wrangler/
+# Backup files — never commit source backups
+*.bak
+*.bak_*

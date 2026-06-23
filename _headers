@@ -1,9 +1,31 @@
 /*
+  # ── Security headers (applied to every response) ──────────────────────────
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   X-XSS-Protection: 1; mode=block
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+  # Prevent other sites from embedding this page or sharing process (CORP/COOP)
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+
+  # Content-Security-Policy — allows only what the app legitimately needs:
+  #   - default: same-origin only
+  #   - scripts: same-origin + Google Fonts inline style bootstrap
+  #   - styles:  same-origin + Google Fonts CDN
+  #   - fonts:   Google Fonts static CDN (fonts.gstatic.com)
+  #   - images:  same-origin + all *.backblazeb2.com subdomains (B2 CDN) + data URIs (SVG noise texture)
+  #   - connect: same-origin (all API calls are same-origin relative)
+  #   - media:   same-origin + B2 (for video streaming)
+  #   - object:  none  (no Flash / embeds)
+  #   - base:    none  (prevent base-tag injection)
+  #   - form:    none  (app uses fetch, not HTML forms)
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.backblazeb2.com; connect-src 'self' https://*.backblazeb2.com; media-src 'self' https://*.backblazeb2.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none';
+
+  # Permissions-Policy — disable browser features the app never uses
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), serial=()
 
 /api/*
   Cache-Control: no-store
+  # API responses must not be cached or shared
+  Pragma: no-cache

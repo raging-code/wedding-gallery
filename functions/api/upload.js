@@ -60,8 +60,52 @@ const MAX_VIDEO_BYTES = 100 * 1024 * 1024;  // 100 MB (post-compression backstop
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
 
+
+// ── In-memory rate limiter (per CF-Connecting-IP, token bucket) ──────────────
+// Cloudflare Workers are single-threaded per isolate; Map is safe here.
+// Limits reset when the isolate recycles (typically every few minutes).
+const _rlMap = new Map();
+/**
+ * Returns true if the request should be blocked.
+ * @param {Request} request
+ * @param {{ max: number, windowMs: number }} opts
+ */
+function isRateLimited(request, { max, windowMs }) {
+  const ip  = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const now = Date.now();
+  let   bucket = _rlMap.get(ip);
+  if (!bucket || now - bucket.ts > windowMs) {
+    bucket = { ts: now, count: 0 };
+  }
+  bucket.count++;
+  _rlMap.set(ip, bucket);
+  // Prevent unbounded map growth — purge entries older than 2× window
+  if (_rlMap.size > 5000) {
+    for (const [k, v] of _rlMap) {
+      if (now - v.ts > windowMs * 2) _rlMap.delete(k);
+    }
+  }
+  return bucket.count > max;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+export async function onRequestOptions() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
+
+  // Rate-limit: max 20 upload inits per IP per 60 s
+  if (isRateLimited(request, { max: 20, windowMs: 60_000 })) {
+    return jsonError('Too many requests', 429);
+  }
 
   let body;
   try { body = await request.json(); } catch {

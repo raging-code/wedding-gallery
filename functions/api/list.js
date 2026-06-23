@@ -18,6 +18,17 @@ const VIDEO_BUCKETS = [
   { keyId: 'B2_VIDEO2_KEY_ID', appKey: 'B2_VIDEO2_APP_KEY', bucketName: 'B2_VIDEO2_BUCKET_NAME', endpoint: 'B2_VIDEO2_ENDPOINT' },
 ];
 
+export async function onRequestOptions() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+
 export async function onRequestGet(context) {
   const { request, env } = context;
   const url  = new URL(request.url);

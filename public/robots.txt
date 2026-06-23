@@ -1,3 +1,9 @@
-# https://www.robotstxt.org/robotstxt.html
+# robots.txt — Wedding Gallery
 User-agent: *
-Disallow:
+# Block API endpoints from being indexed or probed by crawlers
+Disallow: /api/
+# Block any leftover backup directories
+Disallow: /__backup_v3__/
+Disallow: /__backup__/
+# Disallow direct access to source map files if present
+Disallow: /*.map$
